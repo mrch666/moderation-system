@@ -1,0 +1,181 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME:-yourusername/moderation-system}/backend:${TAG:-latest}
+    container_name: moderation-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - API_KEY=${API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - DB_PATH=${DB_PATH:-/app/data/moderation.db}
+      - TARGET_SERVER_URL=${TARGET_SERVER_URL}
+      - TARGET_SERVER_USERNAME=${TARGET_SERVER_USERNAME}
+      - TARGET_SERVER_PASSWORD=${TARGET_SERVER_PASSWORD}
+      - TARGET_SERVER_TOKEN=${TARGET_SERVER_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - CORS_METHODS=${CORS_METHODS:-GET,POST,PUT,DELETE,OPTIONS}
+      - CORS_ALLOWED_HEADERS=${CORS_ALLOWED_HEADERS:-Content-Type,X-API-Key,Authorization}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-1000}
+      - UPLOAD_TIMEOUT_MS=${UPLOAD_TIMEOUT_MS:-30000}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-/app/logs/backend.log}
+    volumes:
+      - backend-data:/app/data
+      - backend-logs:/app/logs
+      - backend-uploads:/app/uploads
+      - backend-exports:/app/exports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - moderation-network
+
+  # Frontend
+  frontend:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME:-yourusername/moderation-system}/frontend:${TAG:-latest}
+    container_name: moderation-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:3000"
+    environment:
+      - API_URL=http://backend:3000/api
+      - API_KEY=${API_KEY}
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - moderation-network
+
+  # PostgreSQL (опционально)
+  postgres:
+    image: postgres:15-alpine
+    container_name: moderation-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME:-moderation_db}
+      - POSTGRES_USER=${DB_USER:-moderation_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-moderation_user}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - moderation-network
+
+  # Redis для кэширования (опционально)
+  redis:
+    image: redis:7-alpine
+    container_name: moderation-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - moderation-network
+
+  # Nginx reverse proxy (опционально)
+  nginx:
+    image: nginx:alpine
+    container_name: moderation-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - moderation-network
+
+  # Telegram бот (опционально)
+  telegram-bot:
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${IMAGE_NAME:-yourusername/moderation-system}/telegram-bot:${TAG:-latest}
+    container_name: moderation-telegram-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - API_URL=http://backend:3000/api
+      - API_KEY=${API_KEY}
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - moderation-network
+
+networks:
+  moderation-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  backend-data:
+  backend-logs:
+  backend-uploads:
+  backend-exports:
+  postgres-data:
+  redis-data:
+  nginx-logs:

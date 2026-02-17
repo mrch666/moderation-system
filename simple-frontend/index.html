@@ -1,0 +1,267 @@
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            try {
+                const response = await fetch(`${apiUrl}${endpoint}`, options);
+                
+                if (response.status === 401) {
+                    showAlert('Ошибка аутентификации. Проверьте API ключ.', 'error');
+                    return null;
+                }
+                
+                if (response.status === 403) {
+                    showAlert('Доступ запрещен. Недостаточно прав.', 'error');
+                    return null;
+                }
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    showAlert(`Ошибка: ${error.error || response.statusText}`, 'error');
+                    return null;
+                }
+                
+                return await response.json();
+            } catch (error) {
+                showAlert(`Ошибка сети: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function loadStats() {
+            showLoading('dashboard');
+            
+            const stats = await makeRequest('/moderation/stats');
+            const queue = await makeRequest('/moderation/queue?limit=1');
+            
+            if (stats && queue) {
+                const statsGrid = document.getElementById('stats-grid');
+                
+                // Собираем статистику
+                const approved = stats.data?.find(s => s.status === 'approved')?.count || 0;
+                const rejected = stats.data?.find(s => s.status === 'rejected')?.count || 0;
+                const pending = queue.data?.length || 0;
+                const total = approved + rejected + pending;
+                
+                statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-label">Всего модераций</div>
+                        <div class="stat-value">${total}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Одобрено</div>
+                        <div class="stat-value" style="color: #48bb78;">${approved}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Отклонено</div>
+                        <div class="stat-value" style="color: #f56565;">${rejected}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">В очереди</div>
+                        <div class="stat-value" style="color: #ed8936;">${pending}</div>
+                    </div>
+                `;
+            }
+            
+            hideLoading('dashboard');
+        }
+        
+        async function refreshQueue() {
+            showLoading('queue');
+            
+            const queue = await makeRequest('/moderation/queue?limit=20');
+            
+            if (queue) {
+                const container = document.getElementById('queue-table-container');
+                
+                if (queue.data.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; padding: 40px; color: #718096;">Очередь модерации пуста</p>';
+                    hideLoading('queue');
+                    return;
+                }
+                
+                let tableHTML = `
+                    <table class="queue-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Товар</th>
+                                <th>Изображение</th>
+                                <th>Статус</th>
+                                <th>Отправлено</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                queue.data.forEach(item => {
+                    const date = new Date(item.submitted_at).toLocaleString('ru-RU');
+                    const statusClass = `status-${item.status}`;
+                    const statusText = {
+                        'pending': 'В ожидании',
+                        'approved': 'Одобрено',
+                        'rejected': 'Отклонено',
+                        'processing': 'В обработке'
+                    }[item.status] || item.status;
+                    
+                    tableHTML += `
+                        <tr>
+                            <td>${item.id}</td>
+                            <td><strong>${item.product_id}</strong></td>
+                            <td>
+                                <a href="${item.image_url}" target="_blank" style="color: #667eea; text-decoration: none;">
+                                    👁️ Просмотр
+                                </a>
+                            </td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            <td>${date}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    ${item.status === 'pending' ? `
+                                        <button onclick="moderate(${item.id}, 'approved')" class="btn btn-sm btn-success">✅</button>
+                                        <button onclick="moderate(${item.id}, 'rejected')" class="btn btn-sm btn-danger">❌</button>
+                                    ` : ''}
+                                    <button onclick="viewDetails(${item.id})" class="btn btn-sm">👁️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
+            }
+            
+            hideLoading('queue');
+        }
+        
+        async function moderate(id, status) {
+            if (!confirm(`Вы уверены, что хотите ${status === 'approved' ? 'одобрить' : 'отклонить'} эту модерацию?`)) {
+                return;
+            }
+            
+            const result = await makeRequest(`/moderation/${id}/moderate`, 'PUT', {
+                status: status
+            });
+            
+            if (result) {
+                showAlert(`Модерация #${id} ${status === 'approved' ? 'одобрена' : 'отклонена'}`, 'success');
+                refreshQueue();
+                loadStats();
+            }
+        }
+        
+        async function viewDetails(id) {
+            const result = await makeRequest(`/moderation/${id}/logs`);
+            
+            if (result) {
+                const logs = result.data || [];
+                let logText = 'Логи модерации:\n\n';
+                
+                logs.forEach(log => {
+                    const date = new Date(log.created_at).toLocaleString('ru-RU');
+                    logText += `${date} - ${log.action} (${log.username || 'система'})\n`;
+                });
+                
+                alert(logText);
+            }
+        }
+        
+        async function submitModeration(event) {
+            event.preventDefault();
+            
+            const imageUrl = document.getElementById('imageUrl').value;
+            const productId = document.getElementById('productId').value;
+            const downloadUrl = document.getElementById('downloadUrl').value;
+            const metadataText = document.getElementById('metadata').value;
+            
+            let metadata = {};
+            if (metadataText) {
+                try {
+                    metadata = JSON.parse(metadataText);
+                } catch (e) {
+                    showAlert('Ошибка в JSON метаданных', 'error');
+                    return;
+                }
+            }
+            
+            const data = {
+                image_url: imageUrl,
+                product_id: productId,
+                download_url: downloadUrl,
+                metadata: metadata
+            };
+            
+            const result = await makeRequest('/moderation/submit', 'POST', data);
+            
+            if (result) {
+                const resultDiv = document.getElementById('submit-result');
+                const output = document.getElementById('result-output');
+                
+                output.textContent = JSON.stringify(result, null, 2);
+                resultDiv.style.display = 'block';
+                
+                showAlert('Изображение успешно отправлено на модерацию!', 'success');
+                
+                // Обновить статистику и очередь
+                loadStats();
+                refreshQueue();
+                
+                // Прокрутить к результату
+                resultDiv.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        async function testConnection() {
+            const result = await makeRequest('/health');
+            
+            if (result) {
+                showAlert('Подключение к API успешно!', 'success');
+            }
+        }
+        
+        async function testApi() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            
+            if (!apiUrl) {
+                showAlert('Введите URL API', 'error');
+                return;
+            }
+            
+            localStorage.setItem(API_URL_KEY, apiUrl);
+            
+            try {
+                const response = await fetch(apiUrl.replace('/api', '') + '/health');
+                const result = await response.json();
+                
+                const testResult = document.getElementById('api-test-result');
+                testResult.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>✅ API доступен!</strong><br>
+                        Статус: ${result.status}<br>
+                        Время: ${new Date(result.timestamp).toLocaleString('ru-RU')}
+                    </div>
+                `;
+            } catch (error) {
+                const testResult = document.getElementById('api-test-result');
+                testResult.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>❌ Ошибка подключения к API</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function clearSettings() {
+            if (confirm('Вы уверены, что хотите очистить все настройки?')) {
+                localStorage.removeItem(API_BASE_KEY);
+                localStorage.removeItem(API_URL_KEY);
+                loadSettings();
+                showAlert('Настройки очищены', 'success');
+            }
+        }
+    </script>
+</body>
+</html>

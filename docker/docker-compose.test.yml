@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: moderation-backend-test
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=test
+      - PORT=3000
+      - API_KEY=test_api_key_123456
+      - DB_TYPE=sqlite
+      - DB_PATH=/app/test.db
+      - TARGET_SERVER_URL=http://mock-server:9999/api/upload/
+      - CORS_ORIGIN=http://localhost:8080
+    volumes:
+      - ./test-data:/app/test-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - moderation-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ../simple-frontend
+      dockerfile: Dockerfile
+    container_name: moderation-frontend-test
+    ports:
+      - "8080:3000"
+    environment:
+      - API_URL=http://backend:3000/api
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - moderation-network
+
+  # Mock сервер для тестирования загрузки
+  mock-server:
+    image: mockserver/mockserver:latest
+    container_name: moderation-mock-server
+    ports:
+      - "9999:1080"
+    command: -serverPort 1080 -logLevel INFO
+    networks:
+      - moderation-network
+
+  # Тестовая база данных
+  test-db:
+    image: postgres:15-alpine
+    container_name: moderation-test-db
+    environment:
+      - POSTGRES_DB=moderation_test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - test-db-data:/var/lib/postgresql/data
+    networks:
+      - moderation-network
+
+  # Запуск тестов
+  tests:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.test
+    container_name: moderation-tests
+    depends_on:
+      - backend
+      - test-db
+      - mock-server
+    environment:
+      - NODE_ENV=test
+      - DATABASE_URL=postgresql://test_user:test_password@test-db:5432/moderation_test
+      - API_URL=http://backend:3000
+      - MOCK_SERVER_URL=http://mock-server:1080
+    volumes:
+      - ./test-reports:/app/test-reports
+    command: npm test
+    networks:
+      - moderation-network
+
+networks:
+  moderation-network:
+    driver: bridge
+
+volumes:
+  test-db-data:
+  test-reports:

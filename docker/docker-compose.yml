@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: moderation-postgres
+    environment:
+      POSTGRES_DB: moderation_system
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - moderation-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis для кэширования и очередей
+  redis:
+    image: redis:7-alpine
+    container_name: moderation-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - moderation-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: moderation-backend
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: moderation_system
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_here}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moderation-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: moderation-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:3000/api
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - moderation-network
+    restart: unless-stopped
+
+  # Telegram бот
+  telegram-bot:
+    build:
+      context: ../telegram-bot
+      dockerfile: Dockerfile
+    container_name: moderation-telegram-bot
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      API_BASE_URL: http://backend:3000/api
+      API_KEY: ${API_KEY}
+      BOT_ADMIN_CHAT_ID: ${BOT_ADMIN_CHAT_ID}
+      BOT_NOTIFICATION_INTERVAL: 300000
+      LOG_LEVEL: info
+    depends_on:
+      - backend
+    networks:
+      - moderation-network
+    restart: unless-stopped
+
+  # Nginx для проксирования (опционально)
+  nginx:
+    image: nginx:alpine
+    container_name: moderation-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - moderation-network
+    restart: unless-stopped
+
+networks:
+  moderation-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

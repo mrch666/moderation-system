@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система модерации изображений</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom-color: #667eea;
+            background: #f8f9fa;
+        }
+        
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .api-key {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .queue-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .queue-item-image {
+            flex: 0 0 200px;
+        }
+        
+        .queue-item-image img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .queue-item-content {
+            flex: 1;
+        }
+        
+        .queue-item-meta {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .queue-item-meta span {
+            display: inline-block;
+            margin-right: 15px;
+            background: #f8f9fa;
+            padding: 3px 8px;
+            border-radius: 3px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .modal-close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-image {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-image img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 5px;
+        }
+        
+        .modal-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .detail-value {
+            margin-top: 5px;
+            word-break: break-all;
+        }
+        
+        /* Стили для пагинации */
+        .pagination {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .pagination-info {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .pagination-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .pagination-btn {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .pagination-btn:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+        
+        .pagination-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .pagination-dots {
+            padding: 8px 5px;
+            color: #666;
+        }
+        
+        .pagination-perpage {
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .pagination-perpage select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            margin-left: 10px;
+        }
+        
+        .pagination-perpage select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Стили для зума изображения */
+        .modal-image {
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            cursor: zoom-in;
+            transition: transform 0.3s;
+            user-select: none;
+        }
+        
+        .modal-image.zoomed {
+            cursor: grab;
+        }
+        
+        .modal-image.zoomed:active {
+            cursor: grabbing;
+        }
+        
+        .modal-image img {
+            transition: transform 0.3s ease;
+            transform-origin: 0 0;
+            display: block;
+            max-width: 100%;
+            max-height: 300px;
+            margin: 0 auto;
+            cursor: inherit;
+        }
+        
+        .modal-image.zoomed img {
+            cursor: grab;
+        }
+        
+        .modal-image.zoomed img:active {
+            cursor: grabbing;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        
+        .modal-image:hover .zoom-controls {
+            opacity: 1;
+        }
+        
+        .zoom-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .zoom-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        .zoom-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .modal-image.zoomed .zoom-indicator {
+            opacity: 1;
+        }
+        
+        /* Стили для лупы при наведении */
+        .modal-image:hover::after {
+            content: '🔍';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .modal-image:hover::after {
+            opacity: 1;
+        }
+        
+        .modal-image.zoomed:hover::after {
+            content: '👁️';
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🖼️ Система модерации изображений</h1>
+        <p>Управление очередью модерации и настройками системы</p>
+    </header>
+    
+    <div class="api-key">
+        <strong>API ключ:</strong> <code id="api-key-display">[загружается из конфигурации]</code>
+        <button onclick="copyApiKey()" class="btn">📋 Копировать</button>
+    </div>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('dashboard')">📊 Дашборд</div>
+        <div class="tab" onclick="showTab('queue')">📋 Очередь</div>
+        <div class="tab" onclick="showTab('submit')">📤 Отправить</div>
+        <div class="tab" onclick="showTab('settings')">⚙️ Настройки</div>
+    </div>
+    
+    <div id="alert" class="alert"></div>
+    
+    <div id="dashboard" class="tab-content active">
+        <h2>Статистика системы</h2>
+        <div class="stats" id="stats">
+            <!-- Статистика будет загружена здесь -->
+        </div>
+        <button onclick="loadStats()" class="btn">🔄 Обновить</button>
+    </div>
+    
+    <div id="queue" class="tab-content">
+        <h2>Очередь модерации</h2>
+        <div id="queue-list">
+            <!-- Очередь будет загружена здесь -->
+        </div>
+        <button onclick="loadQueue(1)" class="btn">🔄 Обновить</button>
+    </div>
+    
+    <div id="submit" class="tab-content">
+        <h2>Отправка на модерацию</h2>
+        <form onsubmit="submitModeration(event)">
+            <div class="form-group">
+                <label>URL изображения:</label>
+                <input type="url" class="form-control" id="imageUrl" required 
+                       value="https://picsum.photos/800/600">
+            </div>
+            <div class="form-group">
+                <label>ID товара:</label>
+                <input type="text" class="form-control" id="productId" required 
+                       value="TEST-001">
+            </div>
+            <div class="form-group">
+                <label>URL для загрузки:</label>
+                <input type="url" class="form-control" id="downloadUrl" required 
+                       value="https://picsum.photos/800/600">
+            </div>
+            <button type="submit" class="btn btn-success">📤 Отправить</button>
+        </form>
+    </div>
+    
+    <div id="settings" class="tab-content">
+        <h2>Настройки</h2>
+        <p>API URL: <code id="api-url-display">[загружается из конфигурации]</code></p>
+        <p>Для изменения настроек отредактируйте файлы в папке <code>backend/.env</code></p>
+        <button onclick="testConnection()" class="btn">🔍 Проверить подключение</button>
+    </div>
+    
+    <!-- Модальное окно для деталей товара -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Детали товара</h2>
+                <span class="modal-close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalBody">
+                <!-- Контент будет загружен динамически -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Загружаем конфигурацию -->
+    <script src="config.js"></script>
+    
+    <script>
+        // Используем конфигурацию из config.js
+        const API_URL = window.MODERATION_CONFIG.API_URL;
+        const API_KEY = window.MODERATION_CONFIG.API_KEY;
+        
+        // Логирование для отладки
+        if (window.MODERATION_CONFIG.DEBUG) {
+            console.log('🚀 Конфигурация загружена:', window.MODERATION_CONFIG);
+            console.log('🌐 API URL:', API_URL);
+        }
+        
+        // Обновляем отображение API ключа и URL
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiKeyDisplay = document.getElementById('api-key-display');
+            const apiUrlDisplay = document.getElementById('api-url-display');
+            
+            if (apiKeyDisplay) {
+                apiKeyDisplay.textContent = API_KEY.substring(0, 8) + '...';
+                apiKeyDisplay.title = API_KEY;
+            }
+            
+            if (apiUrlDisplay) {
+                apiUrlDisplay.textContent = API_URL;
+            }
+        });
+        
+        function showAlert(message, type = 'success') {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            setTimeout(() => alert.style.display = 'none', 5000);
+        }
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+            
+            if (tabId === 'dashboard') loadStats();
+            if (tabId === 'queue') loadQueue(1);
+        }
+        
+        function copyApiKey() {
+            navigator.clipboard.writeText(API_KEY);
+            showAlert('API ключ скопирован в буфер обмена');
+        }
+        
+        async function makeRequest(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'X-API-Key': API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data) options.body = JSON.stringify(data);
+            
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, options);
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Ошибка сервера');
+                }
+                return await response.json();
+            } catch (error) {
+                showAlert(`Ошибка: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function loadStats() {
+            const stats = await makeRequest('/moderation/stats');
+            const queue = await makeRequest('/moderation/queue?limit=1');
+            
+            if (stats && queue) {
+                const approved = stats.data?.find(s => s.status === 'approved')?.count || 0;
+                const rejected = stats.data?.find(s => s.status === 'rejected')?.count || 0;
+                const pending = queue.data?.length || 0;
+                const total = approved + rejected + pending;
+                
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-label">Всего</div>
+                        <div class="stat-value">${total}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Одобрено</div>
+                        <div class="stat-value" style="color: #28a745;">${approved}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Отклонено</div>
+                        <div class="stat-value" style="color: #dc3545;">${rejected}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">В очереди</div>
+                        <div class="stat-value" style="color: #ffc107;">${pending}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Глобальные переменные для пагинации
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let totalItems = 0;
+        let totalPages = 1;
+
+        async function loadQueue(page = 1) {
+            currentPage = page;
+            const offset = (page - 1) * itemsPerPage;
+            const queue = await makeRequest(`/moderation/queue?limit=${itemsPerPage}&offset=${offset}&page=${page}`);
+            
+            if (queue && queue.data.length > 0) {
+                let html = '';
+                queue.data.forEach(item => {
+                    const date = new Date(item.submitted_at).toLocaleString('ru-RU');
+                    let metadata = {};
+                    let productName = item.product_id;
+                    let category = '';
+                    
+                    try {
+                        if (item.metadata) {
+                            metadata = JSON.parse(item.metadata);
+                            productName = metadata.name || item.product_id;
+                            category = metadata.category || '';
+                        }
+                    } catch (e) {
+                        console.log('Ошибка парсинга метаданных:', e);
+                    }
+                    
+                    // Безопасный URL для изображения
+                    const imageUrl = item.image_url || 'https://via.placeholder.com/200x150?text=No+Image';
+                    
+                    html += `
+                        <div class="queue-item">
+                            <div class="queue-item-image">
+                                <img src="${imageUrl}" 
+                                     alt="${productName}"
+                                     onerror="this.src='https://via.placeholder.com/200x150?text=Image+Error'">
+                            </div>
+                            <div class="queue-item-content">
+                                <strong>ID: ${item.id}</strong> | Товар: ${item.product_id}<br>
+                                <strong>${productName}</strong><br>
+                                Статус: ${item.status === 'pending' ? '⏳ Ожидает' : item.status}<br>
+                                Отправлено: ${date}<br>
+                                
+                                <div class="queue-item-meta">
+                                    ${category ? `<span>📁 ${category}</span>` : ''}
+                                    <span>🆔 ${item.product_id}</span>
+                                    <span>📅 ${date.split(' ')[0]}</span>
+                                </div>
+                                
+                                ${item.status === 'pending' ? `
+                                    <div style="margin-top: 10px;">
+                                        <button onclick="moderate(${item.id}, 'approved')" class="btn btn-success">✅ Одобрить</button>
+                                        <button onclick="moderate(${item.id}, 'rejected')" class="btn btn-danger">❌ Отклонить</button>
+                                        <button onclick="viewDetails(${item.id})" class="btn">🔍 Подробнее</button>
+                                    </div>
+                                ` : `
+                                    <div style="margin-top: 10px;">
+                                        <span style="color: ${item.status === 'approved' ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                                            ${item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
+                                        </span>
+                                        <button onclick="viewDetails(${item.id})" class="btn">🔍 Подробнее</button>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Сохраняем информацию о пагинации
+                if (queue.pagination) {
+                    totalItems = queue.pagination.total;
+                    totalPages = queue.pagination.totalPages;
+                }
+                
+                // Добавляем элементы пагинации
+                let paginationHtml = '';
+                if (totalPages > 1) {
+                    paginationHtml = generatePaginationHtml(currentPage, totalPages);
+                }
+                
+                document.getElementById('queue-list').innerHTML = html + paginationHtml;
+            } else {
+                document.getElementById('queue-list').innerHTML = '<p>Очередь пуста</p>';
+            }
+        }
+        
+        function generatePaginationHtml(currentPage, totalPages) {
+            let html = '<div class="pagination">';
+            
+            // Информация о странице
+            html += `<div class="pagination-info">
+                        Страница ${currentPage} из ${totalPages} (всего: ${totalItems} товаров)
+                     </div>`;
+            
+            // Кнопки пагинации
+            html += '<div class="pagination-buttons">';
+            
+            // Кнопка "Назад"
+            if (currentPage > 1) {
+                html += `<button onclick="loadQueue(${currentPage - 1})" class="pagination-btn">
+                            ← Назад
+                         </button>`;
+            }
+            
+            // Первая страница
+            if (currentPage > 3) {
+                html += `<button onclick="loadQueue(1)" class="pagination-btn">1</button>`;
+                if (currentPage > 4) html += '<span class="pagination-dots">...</span>';
+            }
+            
+            // Страницы вокруг текущей
+            for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+                if (i === currentPage) {
+                    html += `<button class="pagination-btn active">${i}</button>`;
+                } else {
+                    html += `<button onclick="loadQueue(${i})" class="pagination-btn">${i}</button>`;
+                }
+            }
+            
+            // Последняя страница
+            if (currentPage < totalPages - 2) {
+                if (currentPage < totalPages - 3) html += '<span class="pagination-dots">...</span>';
+                html += `<button onclick="loadQueue(${totalPages})" class="pagination-btn">${totalPages}</button>`;
+            }
+            
+            // Кнопка "Вперед"
+            if (currentPage < totalPages) {
+                html += `<button onclick="loadQueue(${currentPage + 1})" class="pagination-btn">
+                            Вперед →
+                         </button>`;
+            }
+            
+            // Выбор количества элементов на страницу
+            html += `</div>
+                     <div class="pagination-perpage">
+                        Показывать по: 
+                        <select onchange="changeItemsPerPage(this.value)">
+                            <option value="5" ${itemsPerPage === 5 ? 'selected' : ''}>5</option>
+                            <option value="10" ${itemsPerPage === 10 ? 'selected' : ''}>10</option>
+                            <option value="20" ${itemsPerPage === 20 ? 'selected' : ''}>20</option>
+                            <option value="50" ${itemsPerPage === 50 ? 'selected' : ''}>50</option>
+                        </select>
+                     </div>`;
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function changeItemsPerPage(newPerPage) {
+            itemsPerPage = parseInt(newPerPage);
+            currentPage = 1; // Сбрасываем на первую страницу
+            loadQueue(currentPage);
+        }
+        
+        async function viewDetails(id) {
+            const item = await makeRequest(`/moderation/${id}`);
+            if (item && item.data) {
+                showItemModal(item.data);
+            } else {
+                alert('Не удалось загрузить детали товара');
+            }
+        }
+        
+        function showItemModal(item) {
+            let metadata = {};
+            try {
+                if (item.metadata) {
+                    metadata = JSON.parse(item.metadata);
+                }
+            } catch (e) {
+                console.log('Ошибка парсинга метаданных:', e);
+            }
+            
+            const date = new Date(item.submitted_at).toLocaleString('ru-RU');
+            const moderatedDate = item.moderated_at ? new Date(item.moderated_at).toLocaleString('ru-RU') : 'Не модерировано';
+            
+            const modalBody = `
+                <div class="modal-image" id="modalImageContainer" onclick="toggleZoom()">
+                    <img src="${item.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" 
+                         alt="${metadata.name || item.product_id}"
+                         onerror="this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+                         id="modalImage">
+                    <div class="zoom-indicator" id="zoomIndicator">×1.8</div>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomIn(event)">+</button>
+                        <button class="zoom-btn" onclick="zoomOut(event)">−</button>
+                        <button class="zoom-btn" onclick="resetZoom(event)">↺</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin: 10px 0; color: #666; font-size: 0.9em;">
+                    🔍 Нажмите на изображение или используйте кнопки для зума
+                </div>
+                
+                <div class="modal-details">
+                    <div class="detail-item">
+                        <div class="detail-label">ID модерации</div>
+                        <div class="detail-value">${item.id}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">ID товара</div>
+                        <div class="detail-value">${item.product_id}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Статус</div>
+                        <div class="detail-value">
+                            <span style="color: ${item.status === 'approved' ? '#28a745' : item.status === 'rejected' ? '#dc3545' : '#ffc107'}; font-weight: bold;">
+                                ${item.status === 'pending' ? '⏳ Ожидает' : 
+                                  item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Отправлено</div>
+                        <div class="detail-value">${date}</div>
+                    </div>
+                    
+                    ${item.moderated_at ? `
+                    <div class="detail-item">
+                        <div class="detail-label">Модерировано</div>
+                        <div class="detail-value">${moderatedDate}</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Причина</div>
+                        <div class="detail-value">${item.reason || 'Не указана'}</div>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="modal-details">
+                    <div class="detail-item">
+                        <div class="detail-label">URL изображения</div>
+                        <div class="detail-value">
+                            <a href="${item.image_url}" target="_blank">${item.image_url}</a>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">URL для загрузки</div>
+                        <div class="detail-value">
+                            <a href="${item.download_url}" target="_blank">${item.download_url}</a>
+                        </div>
+                    </div>
+                </div>
+                
+                ${Object.keys(metadata).length > 0 ? `
+                <h3>Метаданные</h3>
+                <div class="modal-details">
+                    ${Object.entries(metadata).map(([key, value]) => `
+                        <div class="detail-item">
+                            <div class="detail-label">${key}</div>
+                            <div class="detail-value">${typeof value === 'object' ? JSON.stringify(value) : value}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                
+                ${item.status === 'pending' ? `
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="moderateFromModal(${item.id}, 'approved')" class="btn btn-success">✅ Одобрить</button>
+                    <button onclick="moderateFromModal(${item.id}, 'rejected')" class="btn btn-danger">❌ Отклонить</button>
+                </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('modalTitle').textContent = `Товар: ${metadata.name || item.product_id}`;
+            document.getElementById('modalBody').innerHTML = modalBody;
+            document.getElementById('itemModal').style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('itemModal').style.display = 'none';
+        }
+        
+        // Функция для модерации из модального окна
+        async function moderateFromModal(id, status) {
+            // Для отклонения не спрашиваем подтверждение
+            if (status === 'approved') {
+                if (!confirm('Одобрить эту модерацию?\n\n1. Все товары с таким же ID будут удалены из очереди\n2. Изображение будет загружено на сервер img.instrumentstore.ru:7990')) {
+                    return;
+                }
+            }
+            
+            const result = await makeRequest(`/moderation/${id}/moderate`, 'PUT', { status });
+            if (result) {
+                let message = '';
+                if (status === 'approved') {
+                    message = `Модерация #${id} одобрена. Все товары с таким же ID удалены из очереди.`;
+                    
+                    // Добавляем информацию о загрузке изображения
+                    if (result.data.upload) {
+                        if (result.data.upload.success) {
+                            message += `\n✅ Изображение загружено: ${result.data.upload.filename}`;
+                        } else if (result.data.upload.skipped) {
+                            message += `\n⚠️ Изображение не загружено: ${result.data.upload.error}`;
+                        } else {
+                            message += `\n❌ Ошибка загрузки изображения: ${result.data.upload.error}`;
+                        }
+                    }
+                } else {
+                    message = `Модерация #${id} отклонена`;
+                }
+                
+                showAlert(message);
+                closeModal();
+                loadQueue(currentPage);
+                loadStats();
+            }
+        }
+        
+        // Закрытие модального окна при клике вне его
+        window.onclick = function(event) {
+            const modal = document.getElementById('itemModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        async function moderate(id, status) {
+            // Для отклонения не спрашиваем подтверждение
+            if (status === 'approved') {
+                if (!confirm('Одобрить эту модерацию?\n\n1. Все товары с таким же ID будут удалены из очереди\n2. Изображение будет загружено на сервер img.instrumentstore.ru:7990')) {
+                    return;
+                }
+            }
+            
+            const result = await makeRequest(`/moderation/${id}/moderate`, 'PUT', { status });
+            if (result) {
+                let message = '';
+                if (status === 'approved') {
+                    message = `Модерация #${id} одобрена. Все товары с таким же ID удалены из очереди.`;
+                    
+                    // Добавляем информацию о загрузке изображения
+                    if (result.data.upload) {
+                        if (result.data.upload.success) {
+                            message += `\n✅ Изображение загружено: ${result.data.upload.filename}`;
+                        } else if (result.data.upload.skipped) {
+                            message += `\n⚠️ Изображение не загружено: ${result.data.upload.error}`;
+                        } else {
+                            message += `\n❌ Ошибка загрузки изображения: ${result.data.upload.error}`;
+                        }
+                    }
+                } else {
+                    message = `Модерация #${id} отклонена`;
+                }
+                
+                showAlert(message);
+                loadQueue(currentPage);
+                loadStats();
+            }
+        }
+        
+        async function submitModeration(event) {
+            event.preventDefault();
+            
+            const data = {
+                image_url: document.getElementById('imageUrl').value,
+                product_id: document.getElementById('productId').value,
+                download_url: document.getElementById('downloadUrl').value
+            };
+            
+            const result = await makeRequest('/moderation/submit', 'POST', data);
+            if (result) {
+                showAlert('Изображение отправлено на модерацию!');
+                document.getElementById('productId').value = 'TEST-' + Date.now();
+                loadStats();
+                loadQueue(1);
+            }
+        }
+        
+        async function testConnection() {
+            try {
+                const response = await fetch('http://localhost:3000/health');
+                if (response.ok) {
+                    showAlert('✅ Подключение к API успешно!');
+                } else {
+                    showAlert('❌ Ошибка подключения к API', 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Ошибка сети: ${error.message}`, 'error');
+            }
+        }
+        
+        // Функции для зума изображения
+        let currentZoom = 1;
+        const zoomStep = 0.2;
+        const maxZoom = 3;
+        const minZoom = 1;
+        
+        function toggleZoom() {
+            const imageContainer = document.getElementById('modalImageContainer');
+            const image = document.getElementById('modalImage');
+            const indicator = document.getElementById('zoomIndicator');
+            
+            if (imageContainer.classList.contains('zoomed')) {
+                // Выключаем зум
+                currentZoom = 1;
+                image.style.transform = `scale(${currentZoom})`;
+                imageContainer.classList.remove('zoomed');
+                indicator.style.opacity = '0';
+            } else {
+                // Включаем зум
+                currentZoom = 1.8;
+                image.style.transform = `scale(${currentZoom})`;
+                imageContainer.classList.add('zoomed');
+                indicator.textContent = `×${currentZoom.toFixed(1)}`;
+                indicator.style.opacity = '1';
+            }
+        }
+        
+        function zoomIn(event) {
+            event.stopPropagation(); // Останавливаем всплытие события
+            const image = document.getElementById('modalImage');
+            const indicator = document.getElementById('zoomIndicator');
+            const imageContainer = document.getElementById('modalImageContainer');
+            
+            if (currentZoom < maxZoom) {
+                currentZoom += zoomStep;
+                image.style.transform = `scale(${currentZoom})`;
+                imageContainer.classList.add('zoomed');
+                indicator.textContent = `×${currentZoom.toFixed(1)}`;
+                indicator.style.opacity = '1';
+            }
+        }
+        
+        function zoomOut(event) {
+            event.stopPropagation(); // Останавливаем всплытие события
+            const image = document.getElementById('modalImage');
+            const indicator = document.getElementById('zoomIndicator');
+            const imageContainer = document.getElementById('modalImageContainer');
+            
+            if (currentZoom > minZoom + zoomStep) {
+                currentZoom -= zoomStep;
+                image.style.transform = `scale(${currentZoom})`;
+                indicator.textContent = `×${currentZoom.toFixed(1)}`;
+                
+                if (currentZoom <= minZoom) {
+                    imageContainer.classList.remove('zoomed');
+                    indicator.style.opacity = '0';
+                }
+            } else {
+                // Сбрасываем до минимального зума
+                currentZoom = minZoom;
+                image.style.transform = `scale(${currentZoom})`;
+                imageContainer.classList.remove('zoomed');
+                indicator.style.opacity = '0';
+            }
+        }
+        
+        function resetZoom(event) {
+            if (event) event.stopPropagation(); // Останавливаем всплытие события
+            const image = document.getElementById('modalImage');
+            const indicator = document.getElementById('zoomIndicator');
+            const imageContainer = document.getElementById('modalImageContainer');
+            
+            currentZoom = minZoom;
+            image.style.transform = `scale(${currentZoom})`;
+            imageContainer.classList.remove('zoomed');
+            indicator.style.opacity = '0';
+        }
+        
+        // Обработка колесика мыши для зума
+        function setupImageZoomWheel() {
+            const imageContainer = document.getElementById('modalImageContainer');
+            if (imageContainer) {
+                imageContainer.addEventListener('wheel', function(event) {
+                    event.preventDefault();
+                    
+                    if (event.deltaY < 0) {
+                        // Прокрутка вверх - увеличение
+                        zoomIn(event);
+                    } else {
+                        // Прокрутка вниз - уменьшение
+                        zoomOut(event);
+                    }
+                }, { passive: false });
+            }
+        }
+        
+        // Функция для перетаскивания изображения
+        function setupImageDrag() {
+            const imageContainer = document.getElementById('modalImageContainer');
+            const image = document.getElementById('modalImage');
+            
+            if (!imageContainer || !image) return;
+            
+            let isDragging = false;
+            let startX, startY;
+            let translateX = 0, translateY = 0;
+            let savedTranslateX = 0, savedTranslateY = 0;
+            
+            imageContainer.addEventListener('mousedown', startDrag);
+            imageContainer.addEventListener('touchstart', startDragTouch);
+            
+            function startDrag(e) {
+                if (!imageContainer.classList.contains('zoomed')) return;
+                
+                e.preventDefault();
+                isDragging = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                imageContainer.style.cursor = 'grabbing';
+            }
+            
+            function startDragTouch(e) {
+                if (!imageContainer.classList.contains('zoomed')) return;
+                
+                e.preventDefault();
+                isDragging = true;
+                const touch = e.touches[0];
+                startX = touch.clientX - translateX;
+                startY = touch.clientY - translateY;
+                
+                document.addEventListener('touchmove', dragTouch);
+                document.addEventListener('touchend', stopDrag);
+            }
+            
+            function drag(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                
+                // Ограничиваем перемещение
+                const maxTranslate = (currentZoom - 1) * 100;
+                translateX = Math.max(-maxTranslate, Math.min(maxTranslate, translateX));
+                translateY = Math.max(-maxTranslate, Math.min(maxTranslate, translateY));
+                
+                updateImageTransform();
+            }
+            
+            function dragTouch(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                translateX = touch.clientX - startX;
+                translateY = touch.clientY - startY;
+                
+                // Ограничиваем перемещение
+                const maxTranslate = (currentZoom - 1) * 100;
+                translateX = Math.max(-maxTranslate, Math.min(maxTranslate, translateX));
+                translateY = Math.max(-maxTranslate, Math.min(maxTranslate, translateY));
+                
+                updateImageTransform();
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                savedTranslateX = translateX;
+                savedTranslateY = translateY;
+                
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchmove', dragTouch);
+                document.removeEventListener('touchend', stopDrag);
+                
+                imageContainer.style.cursor = 'grab';
+            }
+            
+            function updateImageTransform() {
+                image.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
+            }
+            
+            // Сбрасываем позицию при изменении зума
+            const originalZoomIn = zoomIn;
+            const originalZoomOut = zoomOut;
+            const originalResetZoom = resetZoom;
+            
+            zoomIn = function(e) {
+                originalZoomIn(e);
+                translateX = savedTranslateX * (currentZoom / (currentZoom - zoomStep));
+                translateY = savedTranslateY * (currentZoom / (currentZoom - zoomStep));
+                updateImageTransform();
+            };
+            
+            zoomOut = function(e) {
+                originalZoomOut(e);
+                translateX = savedTranslateX * (currentZoom / (currentZoom + zoomStep));
+                translateY = savedTranslateY * (currentZoom / (currentZoom + zoomStep));
+                updateImageTransform();
+            };
+            
+            resetZoom = function(e) {
+                originalResetZoom(e);
+                translateX = 0;
+                translateY = 0;
+                savedTranslateX = 0;
+                savedTranslateY = 0;
+                updateImageTransform();
+            };
+        }
+        
+        // Обновляем функцию showItemModal для настройки зума
+        const originalShowItemModal = showItemModal;
+        showItemModal = function(item) {
+            originalShowItemModal(item);
+            // Сбрасываем зум при открытии нового изображения
+            setTimeout(() => {
+                resetZoom();
+                setupImageZoomWheel();
+                setupImageDrag();
+            }, 100);
+        };
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadQueue(1);
+        });
+    </script>
+</body>
+</html>

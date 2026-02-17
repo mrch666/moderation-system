@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест системы модерации</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Тест системы модерации</h1>
+    
+    <div class="test">
+        <h3>1. Проверка определения адреса API</h3>
+        <p>Текущий hostname: <span id="hostname"></span></p>
+        <p>Определенный API_URL: <span id="apiUrl"></span></p>
+        <button onclick="checkApiUrl()">Проверить</button>
+    </div>
+    
+    <div class="test">
+        <h3>2. Проверка доступа к backend (без API ключа)</h3>
+        <button onclick="testBackendNoKey()">Проверить /health</button>
+        <div id="result1"></div>
+    </div>
+    
+    <div class="test">
+        <h3>3. Проверка доступа к backend (с API ключом)</h3>
+        <button onclick="testBackendWithKey()">Проверить /api/moderation/queue</button>
+        <div id="result2"></div>
+    </div>
+    
+    <div class="test">
+        <h3>4. Проверка CORS</h3>
+        <button onclick="testCors()">Проверить CORS headers</button>
+        <div id="result3"></div>
+    </div>
+    
+    <div class="test">
+        <h3>5. Сравнение адресов</h3>
+        <button onclick="compareUrls()">Сравнить все варианты</button>
+        <div id="result4"></div>
+    </div>
+    
+    <script>
+        const API_KEY = 'test_api_key_123456';
+        
+        function checkApiUrl() {
+            const hostname = window.location.hostname;
+            const apiUrl = hostname === 'localhost' 
+                ? 'http://localhost:3000/api'
+                : `http://${hostname}:3000/api`;
+            
+            document.getElementById('hostname').textContent = hostname;
+            document.getElementById('apiUrl').textContent = apiUrl;
+        }
+        
+        async function testBackendNoKey() {
+            const result = document.getElementById('result1');
+            result.innerHTML = '<p>Проверяем...</p>';
+            
+            try {
+                const response = await fetch('http://192.168.1.189:3000/health');
+                const data = await response.json();
+                result.innerHTML = `
+                    <div class="success">
+                        <p>✅ Успешно!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">
+                        <p>❌ Ошибка: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testBackendWithKey() {
+            const result = document.getElementById('result2');
+            result.innerHTML = '<p>Проверяем...</p>';
+            
+            try {
+                const response = await fetch('http://192.168.1.189:3000/api/moderation/queue?limit=1', {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                const data = await response.json();
+                result.innerHTML = `
+                    <div class="success">
+                        <p>✅ Успешно! Статус: ${data.success}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">
+                        <p>❌ Ошибка: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testCors() {
+            const result = document.getElementById('result3');
+            result.innerHTML = '<p>Проверяем...</p>';
+            
+            try {
+                const response = await fetch('http://192.168.1.189:3000/health', {
+                    method: 'OPTIONS'
+                });
+                
+                let headers = '';
+                for (const [key, value] of response.headers.entries()) {
+                    headers += `${key}: ${value}\n`;
+                }
+                
+                result.innerHTML = `
+                    <div class="success">
+                        <p>✅ CORS Headers:</p>
+                        <pre>${headers}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">
+                        <p>❌ Ошибка: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function compareUrls() {
+            const result = document.getElementById('result4');
+            result.innerHTML = '<p>Проверяем все варианты...</p>';
+            
+            const urls = [
+                'http://localhost:3000/health',
+                'http://127.0.0.1:3000/health',
+                'http://192.168.1.189:3000/health'
+            ];
+            
+            let results = '';
+            
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    results += `<p>✅ ${url}: ${data.status}</p>`;
+                } catch (error) {
+                    results += `<p>❌ ${url}: ${error.message}</p>`;
+                }
+            }
+            
+            result.innerHTML = `<div>${results}</div>`;
+        }
+        
+        // Автоматически проверяем при загрузке
+        window.onload = function() {
+            checkApiUrl();
+            testBackendNoKey();
+        };
+    </script>
+</body>
+</html>
