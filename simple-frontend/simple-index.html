@@ -84,31 +84,56 @@
             margin: 10px 0;
         }
         
+        /* Контейнер для строк товаров */
+        .queue-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
         .queue-item {
             background: white;
             padding: 15px;
-            margin-bottom: 15px;
             border-radius: 10px;
             border-left: 4px solid #667eea;
             display: flex;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex: 1 1 calc(33.333% - 15px); /* 3 товара в строке */
+            min-width: 300px;
+            max-width: 400px;
         }
         
         .queue-item-image {
-            flex: 0 0 200px;
+            width: 100%;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #f8f9fa;
         }
         
         .queue-item-image img {
             width: 100%;
-            height: 150px;
-            object-fit: cover;
+            height: 100%;
+            object-fit: contain; /* Не обрезаем изображение */
             border-radius: 5px;
             border: 1px solid #ddd;
+            transition: transform 0.3s ease;
+        }
+        
+        .queue-item-image img:hover {
+            transform: scale(1.05);
         }
         
         .queue-item-content {
             flex: 1;
+            display: flex;
+            flex-direction: column;
         }
         
         .queue-item-meta {
@@ -119,10 +144,48 @@
         
         .queue-item-meta span {
             display: inline-block;
-            margin-right: 15px;
+            margin-right: 10px;
+            margin-bottom: 5px;
             background: #f8f9fa;
             padding: 3px 8px;
             border-radius: 3px;
+            font-size: 0.85em;
+        }
+        
+        /* Компактные кнопки для группировки */
+        .queue-item-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: auto; /* Прижимаем кнопки к низу */
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .queue-item-buttons .btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px 12px;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+        
+        /* Адаптивность для мобильных */
+        @media (max-width: 1200px) {
+            .queue-item {
+                flex: 1 1 calc(50% - 15px); /* 2 товара в строке на планшетах */
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .queue-item {
+                flex: 1 1 100%; /* 1 товар в строке на мобильных */
+                min-width: auto;
+            }
+            
+            .queue-row {
+                gap: 10px;
+            }
         }
         
         .btn {
@@ -632,7 +695,15 @@
             
             if (queue && queue.data.length > 0) {
                 let html = '';
-                queue.data.forEach(item => {
+                let itemsInCurrentRow = 0;
+                const itemsPerRow = 3; // 3 товара в строке
+                
+                queue.data.forEach((item, index) => {
+                    // Начинаем новую строку если нужно
+                    if (itemsInCurrentRow === 0) {
+                        html += `<div class="queue-row">`;
+                    }
+                    
                     const date = new Date(item.submitted_at).toLocaleString('ru-RU');
                     let metadata = {};
                     let productName = item.product_id;
@@ -652,41 +723,54 @@
                     const imageUrl = item.image_url || 'https://via.placeholder.com/200x150?text=No+Image';
                     
                     html += `
-                        <div class="queue-item">
+                        <div class="queue-item" data-uuid="${item.id}">
                             <div class="queue-item-image">
                                 <img src="${imageUrl}" 
                                      alt="${productName}"
-                                     onerror="this.src='https://via.placeholder.com/200x150?text=Image+Error'">
+                                     onerror="this.src='https://via.placeholder.com/200x150?text=Image+Error'"
+                                     onclick="viewDetails(${item.id})"
+                                     style="cursor: pointer;">
                             </div>
                             <div class="queue-item-content">
-                                <strong>ID: ${item.id}</strong> | Товар: ${item.product_id}<br>
-                                <strong>${productName}</strong><br>
-                                Статус: ${item.status === 'pending' ? '⏳ Ожидает' : item.status}<br>
-                                Отправлено: ${date}<br>
+                                <div style="margin-bottom: 8px;">
+                                    <strong style="font-size: 1.1em;">${productName}</strong>
+                                </div>
+                                
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+                                    <div>🆔 <strong>${item.product_id}</strong></div>
+                                    <div>📅 ${date.split(' ')[0]}</div>
+                                    <div>⏰ ${date.split(' ')[1]}</div>
+                                </div>
                                 
                                 <div class="queue-item-meta">
                                     ${category ? `<span>📁 ${category}</span>` : ''}
-                                    <span>🆔 ${item.product_id}</span>
-                                    <span>📅 ${date.split(' ')[0]}</span>
+                                    <span>ID: ${item.id}</span>
+                                    <span>${item.status === 'pending' ? '⏳ Ожидает' : item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}</span>
                                 </div>
                                 
-                                ${item.status === 'pending' ? `
-                                    <div style="margin-top: 10px;">
-                                        <button onclick="moderate(${item.id}, 'approved')" class="btn btn-success">✅ Одобрить</button>
-                                        <button onclick="moderate(${item.id}, 'rejected')" class="btn btn-danger">❌ Отклонить</button>
-                                        <button onclick="viewDetails(${item.id})" class="btn">🔍 Подробнее</button>
-                                    </div>
-                                ` : `
-                                    <div style="margin-top: 10px;">
-                                        <span style="color: ${item.status === 'approved' ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                                <div class="queue-item-buttons">
+                                    ${item.status === 'pending' ? `
+                                        <button onclick="moderate(${item.id}, 'approved')" class="btn btn-success" title="Одобрить товар">✅ Одобрить</button>
+                                        <button onclick="moderate(${item.id}, 'rejected')" class="btn btn-danger" title="Отклонить товар">❌ Отклонить</button>
+                                        <button onclick="viewDetails(${item.id})" class="btn" title="Подробная информация">🔍</button>
+                                    ` : `
+                                        <span style="color: ${item.status === 'approved' ? '#28a745' : '#dc3545'}; font-weight: bold; padding: 8px 12px; text-align: center;">
                                             ${item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
                                         </span>
-                                        <button onclick="viewDetails(${item.id})" class="btn">🔍 Подробнее</button>
-                                    </div>
-                                `}
+                                        <button onclick="viewDetails(${item.id})" class="btn" title="Подробная информация">🔍</button>
+                                    `}
+                                </div>
                             </div>
                         </div>
                     `;
+                    
+                    itemsInCurrentRow++;
+                    
+                    // Закрываем строку если достигли максимума или это последний товар
+                    if (itemsInCurrentRow === itemsPerRow || index === queue.data.length - 1) {
+                        html += `</div>`;
+                        itemsInCurrentRow = 0;
+                    }
                 });
                 
                 // Сохраняем информацию о пагинации

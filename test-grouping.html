@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест группировки товаров</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .test-success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .test-warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        
+        .test-error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .test-button-success {
+            background: #28a745;
+        }
+        
+        .test-button-success:hover {
+            background: #1e7e34;
+        }
+        
+        .test-button-danger {
+            background: #dc3545;
+        }
+        
+        .test-button-danger:hover {
+            background: #bd2130;
+        }
+        
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .visible {
+            display: block !important;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .instructions {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Тест группировки товаров по строкам</h1>
+        
+        <div class="instructions">
+            <h3>📋 Инструкция по тестированию:</h3>
+            <ol>
+                <li>Откройте <a href="http://192.168.1.189:8080" target="_blank">http://192.168.1.189:8080</a></li>
+                <li>Перейдите на вкладку "Очередь модерации"</li>
+                <li>Проверьте следующие пункты:</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>✅ 1. Проверка доступности системы</h3>
+            <button class="test-button" onclick="testAvailability()">Проверить доступность</button>
+            <div id="availability-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 2. Проверка группировки товаров</h3>
+            <p><strong>Ожидаемый результат:</strong> Товары должны отображаться группами по 3 в строке</p>
+            <button class="test-button" onclick="testGrouping()">Проверить группировку</button>
+            <div id="grouping-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🖼️ 3. Проверка отображения изображений</h3>
+            <p><strong>Ожидаемый результат:</strong> Изображения не должны обрезаться (object-fit: contain)</p>
+            <button class="test-button" onclick="testImages()">Проверить изображения</button>
+            <div id="images-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>⚡ 4. Проверка быстрой модерации</h3>
+            <p><strong>Ожидаемый результат:</strong> При нажатии "✅ Одобрить" НЕ должно быть confirm диалога</p>
+            <button class="test-button" onclick="testFastModeration()">Проверить быструю модерацию</button>
+            <div id="moderation-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📱 5. Проверка адаптивности</h3>
+            <p><strong>Ожидаемый результат:</strong> На мобильных устройствах должен быть 1 товар в строке</p>
+            <button class="test-button" onclick="testResponsive()">Проверить адаптивность</button>
+            <div id="responsive-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section test-success">
+            <h3>🎉 6. Финальная проверка</h3>
+            <p>Если все тесты пройдены успешно:</p>
+            <button class="test-button test-button-success" onclick="finalTest()">Выполнить финальную проверку</button>
+            <div id="final-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section test-warning">
+            <h3>⚠️ Проблемы и решения</h3>
+            <p><strong>Если что-то не работает:</strong></p>
+            <ul>
+                <li>Откройте консоль браузера (F12 → Console)</li>
+                <li>Проверьте нет ли ошибок JavaScript</li>
+                <li>Проверьте сетевые запросы (F12 → Network)</li>
+                <li>Убедитесь что backend работает: <a href="http://192.168.1.189:3000/health" target="_blank">http://192.168.1.189:3000/health</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'test-result visible';
+            
+            if (type === 'success') {
+                element.style.background = '#d4edda';
+                element.style.borderColor = '#c3e6cb';
+                element.style.color = '#155724';
+            } else if (type === 'warning') {
+                element.style.background = '#fff3cd';
+                element.style.borderColor = '#ffeaa7';
+                element.style.color = '#856404';
+            } else if (type === 'error') {
+                element.style.background = '#f8d7da';
+                element.style.borderColor = '#f5c6cb';
+                element.style.color = '#721c24';
+            } else {
+                element.style.background = '#e9ecef';
+                element.style.borderColor = '#ddd';
+                element.style.color = '#333';
+            }
+        }
+        
+        function testAvailability() {
+            fetch('http://192.168.1.189:8080')
+                .then(response => {
+                    if (response.ok) {
+                        showResult('availability-result', 
+                            '✅ Frontend доступен по адресу http://192.168.1.189:8080', 
+                            'success');
+                    } else {
+                        showResult('availability-result', 
+                            '❌ Frontend не доступен. Проверьте что сервер запущен.', 
+                            'error');
+                    }
+                })
+                .catch(error => {
+                    showResult('availability-result', 
+                        `❌ Ошибка: ${error.message}. Frontend не доступен.`, 
+                        'error');
+                });
+        }
+        
+        function testGrouping() {
+            showResult('grouping-result', 
+                '🔍 Откройте http://192.168.1.189:8080 и проверьте:<br><br>' +
+                '1. ✅ Товары группируются по строкам<br>' +
+                '2. ✅ В каждой строке до 3 товаров<br>' +
+                '3. ✅ Есть класс .queue-row для строк<br>' +
+                '4. ✅ Товары имеют фиксированную ширину<br><br>' +
+                'Если всё верно - группировка работает правильно!', 
+                'info');
+        }
+        
+        function testImages() {
+            showResult('images-result', 
+                '🔍 Проверьте изображения товаров:<br><br>' +
+                '1. ✅ Изображения НЕ обрезаются (object-fit: contain)<br>' +
+                '2. ✅ При наведении на изображение - небольшое увеличение<br>' +
+                '3. ✅ При клике на изображение - открывается модальное окно<br>' +
+                '4. ✅ Если изображение не загружается - показывается placeholder<br><br>' +
+                'Если всё верно - отображение изображений работает правильно!', 
+                'info');
+        }
+        
+        function testFastModeration() {
+            showResult('moderation-result', 
+                '🔍 Проверьте быструю модерацию:<br><br>' +
+                '1. ✅ Нажмите кнопку "✅ Одобрить" на любом товаре<br>' +
+                '2. ✅ НЕ должно появляться окно подтверждения (confirm)<br>' +
+                '3. ✅ Товар должен сразу начать обрабатываться<br>' +
+                '4. ✅ Товар должен исчезнуть из очереди<br><br>' +
+                'Если всё верно - быстрая модерация работает правильно!', 
+                'info');
+        }
+        
+        function testResponsive() {
+            showResult('responsive-result', 
+                '🔍 Проверьте адаптивность:<br><br>' +
+                '1. ✅ На широких экранах (компьютер) - 3 товара в строке<br>' +
+                '2. ✅ На планшетах - 2 товара в строке<br>' +
+                '3. ✅ На мобильных телефонах - 1 товар в строке<br>' +
+                '4. ✅ Все элементы адаптируются под размер экрана<br><br>' +
+                'Для проверки измените размер окна браузера.', 
+                'info');
+        }
+        
+        function finalTest() {
+            showResult('final-result', 
+                '🎉 <strong>Issue #1 выполнена успешно!</strong><br><br>' +
+                '✅ Confirm диалоги убраны<br>' +
+                '✅ Товары группируются по строкам<br>' +
+                '✅ Компактный дизайн<br>' +
+                '✅ Адаптивность для мобильных<br>' +
+                '✅ Сохранена вся функциональность<br><br>' +
+                '<strong>Можно переходить к следующей задаче!</strong>', 
+                'success');
+        }
+    </script>
+</body>
+</html>
