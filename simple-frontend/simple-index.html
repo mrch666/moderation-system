@@ -288,6 +288,71 @@
             opacity: 0.7;
         }
         
+        /* Стили для быстрого одобрения */
+        .product-image-item.pending {
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .product-image-item.pending::after {
+            content: '✅';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 2;
+        }
+        
+        .product-image-item.pending::before {
+            content: '❌';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 2;
+        }
+        
+        .product-image-item.pending:hover::after,
+        .product-image-item.pending:hover::before {
+            opacity: 1;
+        }
+        
+        .product-image-item.pending:hover {
+            border-color: #28a745;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        
+        /* Анимация одобрения */
+        @keyframes approveAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        
+        .approving {
+            animation: approveAnimation 0.3s ease;
+        }
+        
         .product-group-actions {
             display: flex;
             justify-content: flex-end;
@@ -955,15 +1020,29 @@
                         const isPending = item.status === 'pending';
                         
                         html += `
-                            <div class="product-image-item ${isPending ? '' : 'opacity-50'}" 
+                            <div class="product-image-item ${isPending ? 'pending' : 'opacity-50'}" 
                                  data-item-id="${item.id}"
-                                 onclick="viewDetails(${item.id})">
+                                 onclick="${isPending ? `quickApprove(${item.id})` : `viewDetails(${item.id})`}"
+                                 title="${isPending ? 'ЛКМ - одобрить, ПКМ - подробнее' : 'Просмотр деталей'}">
                                 <img src="${imageUrl}" 
                                      alt="Фото товара"
-                                     onerror="this.src='https://via.placeholder.com/120x120?text=Image+Error'">
-                                <div class="product-image-overlay">
-                                    ${isPending ? '⏳ Ожидает' : item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
+                                     onerror="this.src='https://via.placeholder.com/120x120?text=Image+Error'"
+                                     oncontextmenu="event.preventDefault(); viewDetails(${item.id}); return false;">
+                                ${isPending ? `
+                                <div class="product-image-overlay" style="display: flex; flex-direction: column; gap: 5px;">
+                                    <div style="background: rgba(40, 167, 69, 0.9); padding: 5px 10px; border-radius: 4px;">
+                                        ✅ Клик - одобрить
+                                    </div>
+                                    <div onclick="event.stopPropagation(); quickReject(${item.id});" 
+                                         style="background: rgba(220, 53, 69, 0.9); padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                                        ❌ Отклонить
+                                    </div>
                                 </div>
+                                ` : `
+                                <div class="product-image-overlay">
+                                    ${item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
+                                </div>
+                                `}
                             </div>
                         `;
                     });
@@ -974,37 +1053,18 @@
                             <div class="product-group-actions">
                     `;
                     
-                    // Если есть товары ожидающие модерации - показываем кнопки
-                    if (group.pendingCount > 0) {
-                        // Получаем ID первого товара в группе (для модерации)
-                        const firstItemId = group.items.find(item => item.status === 'pending')?.id;
-                        
-                        html += `
-                                <button class="product-group-btn product-group-btn-approve" 
-                                        onclick="approveProductGroup('${group.productId}', ${firstItemId})"
-                                        title="Одобрить все фотографии этого товара">
-                                    ✅ Одобрить все
-                                    <span class="product-group-count">${group.pendingCount}</span>
-                                </button>
-                                
-                                <button class="product-group-btn product-group-btn-reject" 
-                                        onclick="rejectProductGroup('${group.productId}', ${firstItemId})"
-                                        title="Отклонить все фотографии этого товара">
-                                    ❌ Отклонить все
-                                    <span class="product-group-count">${group.pendingCount}</span>
-                                </button>
-                        `;
-                    } else {
-                        // Все товары уже промодерированы
-                        const approvedCount = group.items.filter(item => item.status === 'approved').length;
-                        const rejectedCount = group.items.filter(item => item.status === 'rejected').length;
-                        
-                        html += `
-                                <div style="color: #6c757d; font-size: 0.9em;">
-                                    ✅ Одобрено: ${approvedCount} | ❌ Отклонено: ${rejectedCount}
-                                </div>
-                        `;
-                    }
+                    // Показываем только статистику (сколько одобрено/отклонено)
+                    const approvedCount = group.items.filter(item => item.status === 'approved').length;
+                    const rejectedCount = group.items.filter(item => item.status === 'rejected').length;
+                    const pendingCount = group.items.filter(item => item.status === 'pending').length;
+                    
+                    html += `
+                            <div style="color: #6c757d; font-size: 0.9em; text-align: center; width: 100%;">
+                                ⏳ Ожидает: <strong>${pendingCount}</strong> | 
+                                ✅ Одобрено: <strong>${approvedCount}</strong> | 
+                                ❌ Отклонено: <strong>${rejectedCount}</strong>
+                            </div>
+                    `;
                     
                     html += `
                             </div>
@@ -1299,6 +1359,32 @@
         async function rejectProductGroup(productId, itemId) {
             // Используем существующую функцию moderate для первого товара
             // Backend сам отклонит все товары с таким же product_id
+            await moderate(itemId, 'rejected');
+        }
+        
+        // Быстрое одобрение по клику на фото
+        async function quickApprove(itemId) {
+            // Визуальная обратная связь
+            const element = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (element) {
+                element.classList.add('approving');
+                setTimeout(() => element.classList.remove('approving'), 300);
+            }
+            
+            // Одобряем без подтверждения
+            await moderate(itemId, 'approved');
+        }
+        
+        // Быстрое отклонение по клику на кнопку
+        async function quickReject(itemId) {
+            // Визуальная обратная связь
+            const element = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (element) {
+                element.style.borderColor = '#dc3545';
+                setTimeout(() => element.style.borderColor = '', 300);
+            }
+            
+            // Отклоняем без подтверждения
             await moderate(itemId, 'rejected');
         }
         
