@@ -901,13 +901,7 @@
         
         // Функция для модерации из модального окна
         async function moderateFromModal(id, status) {
-            // Для отклонения не спрашиваем подтверждение
-            if (status === 'approved') {
-                if (!confirm('Одобрить эту модерацию?\n\n1. Все товары с таким же ID будут удалены из очереди\n2. Изображение будет загружено на сервер img.instrumentstore.ru:7990')) {
-                    return;
-                }
-            }
-            
+            // Быстрая модерация - без подтверждения
             const result = await makeRequest(`/moderation/${id}/moderate`, 'PUT', { status });
             if (result) {
                 let message = '';
@@ -944,13 +938,7 @@
         }
         
         async function moderate(id, status) {
-            // Для отклонения не спрашиваем подтверждение
-            if (status === 'approved') {
-                if (!confirm('Одобрить эту модерацию?\n\n1. Все товары с таким же ID будут удалены из очереди\n2. Изображение будет загружено на сервер img.instrumentstore.ru:7990')) {
-                    return;
-                }
-            }
-            
+            // Быстрая модерация - без подтверждения
             const result = await makeRequest(`/moderation/${id}/moderate`, 'PUT', { status });
             if (result) {
                 let message = '';
