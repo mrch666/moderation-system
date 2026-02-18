@@ -44,6 +44,12 @@ const server = http.createServer((req, res) => {
         return;
     }
     
+    // Обслуживаем config.js
+    if (req.url === '/config.js') {
+        serveFile(res, 'config.js');
+        return;
+    }
+    
     // Все остальные запросы - 404
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not Found');
