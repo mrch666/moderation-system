@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест компактного дизайна</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .test-warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.2s;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .test-button-success {
+            background: #28a745;
+        }
+        
+        .test-button-success:hover {
+            background: #1e7e34;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+            border-left: 4px solid #007bff;
+        }
+        
+        .visible {
+            display: block !important;
+        }
+        
+        .instructions {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .instructions ol {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        
+        .screenshot-area {
+            background: white;
+            border: 2px dashed #ddd;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: center;
+            color: #6c757d;
+        }
+        
+        .expected-result {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        
+        .expected-result h4 {
+            margin-top: 0;
+            color: #0056b3;
+        }
+        
+        .checklist {
+            margin: 15px 0;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .checklist-item input {
+            margin-right: 10px;
+        }
+        
+        .final-check {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .final-check h3 {
+            margin-top: 0;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Тест компактного дизайна с группировкой по товарам</h1>
+        
+        <div class="instructions">
+            <h3>📋 Инструкция по тестированию:</h3>
+            <ol>
+                <li>Откройте <a href="http://192.168.1.189:8080" target="_blank">http://192.168.1.189:8080</a></li>
+                <li>Перейдите на вкладку "Очередь модерации"</li>
+                <li>Проверьте новый компактный дизайн</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>✅ 1. Проверка доступности системы</h3>
+            <button class="test-button" onclick="testAvailability()">Проверить доступность</button>
+            <div id="availability-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 2. Проверка группировки по товарам</h3>
+            
+            <div class="expected-result">
+                <h4>Ожидаемый результат:</h4>
+                <p>Товары должны быть сгруппированы по названию. Все фотографии одного товара должны быть в одном блоке.</p>
+            </div>
+            
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="check1">
+                    <label for="check1">Товары сгруппированы по названию (не по отдельным фотографиям)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <label for="check2">В заголовке блока только название товара</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <label for="check3">ID товара показан отдельно (в кружке)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <label for="check4">Нет лишней информации (даты, времени, статуса в тексте)</label>
+                </div>
+            </div>
+            
+            <button class="test-button" onclick="testGrouping()">Проверить группировку</button>
+            <div id="grouping-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🖼️ 3. Проверка отображения фотографий</h3>
+            
+            <div class="expected-result">
+                <h4>Ожидаемый результат:</h4>
+                <p>Фотографии одного товара должны отображаться плиткой (миниатюры 120x120px).</p>
+            </div>
+            
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <label for="check5">Фотографии отображаются как миниатюры (120x120px)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <label for="check6">Фотографии расположены плиткой в одной строке</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check7">
+                    <label for="check7">При наведении на фото - появляется оверлей с статусом</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check8">
+                    <label for="check8">Клик на фото открывает модальное окно с деталями</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check9">
+                    <label for="check9">Уже промодерированные фото полупрозрачные (opacity: 0.5)</label>
+                </div>
+            </div>
+            
+            <button class="test-button" onclick="testImages()">Проверить фотографии</button>
+            <div id="images-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>⚡ 4. Проверка кнопок модерации</h3>
+            
+            <div class="expected-result">
+                <h4>Ожидаемый результат:</h4>
+                <p>Под всеми фотографиями товара должна быть ОДНА кнопка "✅ Одобрить все".</p>
+            </div>
+            
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="check10">
+                    <label for="check10">Под фотографиями есть кнопка "✅ Одобрить все"</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check11">
+                    <label for="check11">Рядом с кнопкой показано количество фото (например: "3")</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check12">
+                    <label for="check12">При нажатии "✅ Одобрить все" - одобряются ВСЕ фото товара</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check13">
+                    <label for="check13">Нет отдельных кнопок для каждой фотографии</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check14">
+                    <label for="check14">Кнопка "❌ Отклонить все" также работает для всех фото</label>
+                </div>
+            </div>
+            
+            <button class="test-button" onclick="testButtons()">Проверить кнопки</button>
+            <div id="buttons-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📱 5. Проверка адаптивности</h3>
+            
+            <div class="expected-result">
+                <h4>Ожидаемый результат:</h4>
+                <p>Дизайн должен адаптироваться под разные размеры экрана.</p>
+            </div>
+            
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="check15">
+                    <label for="check15">На компьютере - фотографии в одной строке</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check16">
+                    <label for="check16">На планшете - фотографии переносятся на новую строку</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check17">
+                    <label for="check17">На мобильном - кнопки занимают всю ширину</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check18">
+                    <label for="check18">Нет горизонтального скролла</label>
+                </div>
+            </div>
+            
+            <button class="test-button" onclick="testResponsive()">Проверить адаптивность</button>
+            <div id="responsive-result" class="test-result"></div>
+        </div>
+        
+        <div class="final-check">
+            <h3>🎉 Финальная проверка</h3>
+            <p>Если все пункты отмечены галочками:</p>
+            <button class="test-button test-button-success" onclick="finalTest()">Завершить тестирование</button>
+            <div id="final-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-section test-warning">
+            <h3>⚠️ Проблемы и решения</h3>
+            <p><strong>Если что-то не работает:</strong></p>
+            <ul>
+                <li>Откройте консоль браузера (F12 → Console) - проверьте ошибки JavaScript</li>
+                <li>Проверьте сетевые запросы (F12 → Network) - убедитесь что API отвечает</li>
+                <li>Убедитесь что backend работает: <a href="http://192.168.1.189:3000/health" target="_blank">http://192.168.1.189:3000/health</a></li>
+                <li>Проверьте что в базе есть товары с одинаковым product_id (для группировки)</li>
+                <li>Перезагрузите страницу (Ctrl+F5)</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'test-result visible';
+            
+            if (type === 'success') {
+                element.style.background = '#d4edda';
+                element.style.borderLeftColor = '#28a745';
+                element.style.color = '#155724';
+            } else if (type === 'warning') {
+                element.style.background = '#fff3cd';
+                element.style.borderLeftColor = '#ffc107';
+                element.style.color = '#856404';
+            } else if (type === 'error') {
+                element.style.background = '#f8d7da';
+                element.style.borderLeftColor = '#dc3545';
+                element.style.color = '#721c24';
+            } else {
+                element.style.background = '#e7f3ff';
+                element.style.borderLeftColor = '#007bff';
+                element.style.color = '#004085';
+            }
+        }
+        
+        function testAvailability() {
+            fetch('http://192.168.1.189:8080')
+                .then(response => {
+                    if (response.ok) {
+                        showResult('availability-result', 
+                            '✅ <strong>Frontend доступен!</strong><br>' +
+                            'Адрес: http://192.168.1.189:8080<br>' +
+                            'Можете открыть его в новой вкладке.', 
+                            'success');
+                    } else {
+                        showResult('availability-result', 
+                            '❌ <strong>Frontend не доступен</strong><br>' +
+                            'Проверьте что сервер запущен:<br>' +
+                            '<code>cd moderation-system/simple-frontend && node server.js</code>', 
+                            'error');
+                    }
+                })
+                .catch(error => {
+                    showResult('availability-result', 
+                        `❌ <strong>Ошибка:</strong> ${error.message}<br>` +
+                        'Frontend не доступен. Проверьте запущен ли сервер.', 
+                        'error');
+                });
+        }
+        
+        function testGrouping() {
+            const check1 = document.getElementById('check1').checked;
+            const check2 = document.getElementById('check2').checked;
+            const check3 = document.getElementById('check3').checked;
+            const check4 = document.getElementById('check4').checked;
+            
+            const passed = check1 && check2 && check3 && check4;
+            
+            if (passed) {
+                showResult('grouping-result', 
+                    '✅ <strong>Группировка работает правильно!</strong><br>' +
+                    'Товары сгруппированы по названию, отображается только необходимая информация.', 
+                    'success');
+            } else {
+                showResult('grouping-result', 
+                    '⚠️ <strong>Проверьте группировку</strong><br>' +
+                    'Отметьте все галочки в чеклисте выше.<br>' +
+                    'Если что-то не так - обновите страницу (Ctrl+F5).', 
+                    'warning');
+            }
+        }
+        
+        function testImages() {
+            const check5 = document.getElementById('check5').checked;
+            const check6 = document.getElementById('check6').checked;
+            const check7 = document.getElementById('check7').checked;
+            const check8 = document.getElementById('check8').checked;
+            const check9 = document.getElementById('check9').checked;
+            
+            const passed = check5 && check6 && check7 && check8 && check9;
+            
+            if (passed) {
+                showResult('images-result', 
+                    '✅ <strong>Фотографии отображаются правильно!</strong><br>' +
+                    'Миниатюры, плитка, hover-эффекты - всё работает.', 
+                    'success');
+            } else {
+                showResult('images-result', 
+                    '⚠️ <strong>Проверьте отображение фотографий</strong><br>' +
+                    'Отметьте все галочки в чеклисте выше.<br>' +
+                    'Попробуйте навести курсор на фотографии и кликнуть по ним.', 
+                    'warning');
+            }
+        }
+        
+        function testButtons() {
+            const check10 = document.getElementById('check10').checked;
+            const check11 = document.getElementById('check11').checked;
+            const check12 = document.getElementById('check12').checked;
+            const check13 = document.getElementById('check13').checked;
+            const check14 = document.getElementById('check14').checked;
+            
+            const passed = check10 && check11 && check12 && check13 && check14;
+            
+            if (passed) {
+                showResult('buttons-result', 
+                    '✅ <strong>Кнопки модерации работают правильно!</strong><br>' +
+                    'Одна кнопка для всех фото

@@ -188,6 +188,205 @@
             }
         }
         
+        /* Стили для компактного дизайна с группировкой по товарам */
+        .product-group {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+        
+        .product-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        
+        .product-group-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            flex: 1;
+        }
+        
+        .product-group-id {
+            font-size: 0.9em;
+            color: #6c757d;
+            background: #f8f9fa;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: 15px;
+        }
+        
+        .product-group-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            min-height: 120px;
+        }
+        
+        .product-image-item {
+            flex: 0 0 120px;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .product-image-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        .product-image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-image-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        .product-image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            color: white;
+            font-size: 0.8em;
+        }
+        
+        .product-image-item:hover .product-image-overlay {
+            opacity: 1;
+        }
+        
+        .opacity-50 {
+            opacity: 0.5;
+        }
+        
+        .opacity-50:hover {
+            opacity: 0.7;
+        }
+        
+        .product-group-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .product-group-btn {
+            padding: 10px 25px;
+            font-size: 1em;
+            font-weight: 500;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .product-group-btn-approve {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .product-group-btn-approve:hover {
+            background: linear-gradient(135deg, #218838, #1ba87e);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        
+        .product-group-btn-reject {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+            color: white;
+        }
+        
+        .product-group-btn-reject:hover {
+            background: linear-gradient(135deg, #c82333, #d63384);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+        
+        .product-group-count {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-left: 10px;
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        
+        /* Адаптивность для компактного дизайна */
+        @media (max-width: 768px) {
+            .product-group-images {
+                gap: 8px;
+            }
+            
+            .product-image-item {
+                flex: 0 0 100px;
+                height: 100px;
+            }
+            
+            .product-group-title {
+                font-size: 1.1em;
+            }
+            
+            .product-group-actions {
+                flex-direction: column;
+            }
+            
+            .product-group-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .product-group {
+                padding: 15px;
+            }
+            
+            .product-image-item {
+                flex: 0 0 80px;
+                height: 80px;
+            }
+            
+            .product-group-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .product-group-id {
+                margin-left: 0;
+                align-self: flex-start;
+            }
+        }
+        
         .btn {
             padding: 10px 20px;
             background: #667eea;
@@ -688,89 +887,129 @@
         let totalItems = 0;
         let totalPages = 1;
 
+        // Функция для группировки товаров по product_id
+        function groupItemsByProduct(items) {
+            const groups = {};
+            
+            items.forEach(item => {
+                const productId = item.product_id;
+                
+                if (!groups[productId]) {
+                    // Парсим метаданные для названия товара
+                    let productName = productId;
+                    try {
+                        if (item.metadata) {
+                            const metadata = JSON.parse(item.metadata);
+                            productName = metadata.name || productId;
+                        }
+                    } catch (e) {
+                        console.log('Ошибка парсинга метаданных:', e);
+                    }
+                    
+                    groups[productId] = {
+                        productId: productId,
+                        productName: productName,
+                        items: [],
+                        pendingCount: 0
+                    };
+                }
+                
+                groups[productId].items.push(item);
+                if (item.status === 'pending') {
+                    groups[productId].pendingCount++;
+                }
+            });
+            
+            // Преобразуем объект в массив
+            return Object.values(groups);
+        }
+        
         async function loadQueue(page = 1) {
             currentPage = page;
             const offset = (page - 1) * itemsPerPage;
             const queue = await makeRequest(`/moderation/queue?limit=${itemsPerPage}&offset=${offset}&page=${page}`);
             
             if (queue && queue.data.length > 0) {
+                // Группируем товары по product_id
+                const productGroups = groupItemsByProduct(queue.data);
                 let html = '';
-                let itemsInCurrentRow = 0;
-                const itemsPerRow = 3; // 3 товара в строке
                 
-                queue.data.forEach((item, index) => {
-                    // Начинаем новую строку если нужно
-                    if (itemsInCurrentRow === 0) {
-                        html += `<div class="queue-row">`;
-                    }
-                    
-                    const date = new Date(item.submitted_at).toLocaleString('ru-RU');
-                    let metadata = {};
-                    let productName = item.product_id;
-                    let category = '';
-                    
-                    try {
-                        if (item.metadata) {
-                            metadata = JSON.parse(item.metadata);
-                            productName = metadata.name || item.product_id;
-                            category = metadata.category || '';
-                        }
-                    } catch (e) {
-                        console.log('Ошибка парсинга метаданных:', e);
-                    }
-                    
-                    // Безопасный URL для изображения
-                    const imageUrl = item.image_url || 'https://via.placeholder.com/200x150?text=No+Image';
+                // Для каждой группы товаров создаем блок
+                productGroups.forEach(group => {
+                    // Безопасное название товара
+                    const safeProductName = group.productName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     
                     html += `
-                        <div class="queue-item" data-uuid="${item.id}">
-                            <div class="queue-item-image">
-                                <img src="${imageUrl}" 
-                                     alt="${productName}"
-                                     onerror="this.src='https://via.placeholder.com/200x150?text=Image+Error'"
-                                     onclick="viewDetails(${item.id})"
-                                     style="cursor: pointer;">
+                        <div class="product-group" data-product-id="${group.productId}">
+                            <div class="product-group-header">
+                                <h3 class="product-group-title">${safeProductName}</h3>
+                                <span class="product-group-id">${group.productId}</span>
                             </div>
-                            <div class="queue-item-content">
-                                <div style="margin-bottom: 8px;">
-                                    <strong style="font-size: 1.1em;">${productName}</strong>
+                            
+                            <div class="product-group-images">
+                    `;
+                    
+                    // Добавляем все фотографии товара
+                    group.items.forEach(item => {
+                        const imageUrl = item.image_url || 'https://via.placeholder.com/120x120?text=No+Image';
+                        const isPending = item.status === 'pending';
+                        
+                        html += `
+                            <div class="product-image-item ${isPending ? '' : 'opacity-50'}" 
+                                 data-item-id="${item.id}"
+                                 onclick="viewDetails(${item.id})">
+                                <img src="${imageUrl}" 
+                                     alt="Фото товара"
+                                     onerror="this.src='https://via.placeholder.com/120x120?text=Image+Error'">
+                                <div class="product-image-overlay">
+                                    ${isPending ? '⏳ Ожидает' : item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
                                 </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                            
+                            <div class="product-group-actions">
+                    `;
+                    
+                    // Если есть товары ожидающие модерации - показываем кнопки
+                    if (group.pendingCount > 0) {
+                        // Получаем ID первого товара в группе (для модерации)
+                        const firstItemId = group.items.find(item => item.status === 'pending')?.id;
+                        
+                        html += `
+                                <button class="product-group-btn product-group-btn-approve" 
+                                        onclick="approveProductGroup('${group.productId}', ${firstItemId})"
+                                        title="Одобрить все фотографии этого товара">
+                                    ✅ Одобрить все
+                                    <span class="product-group-count">${group.pendingCount}</span>
+                                </button>
                                 
-                                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
-                                    <div>🆔 <strong>${item.product_id}</strong></div>
-                                    <div>📅 ${date.split(' ')[0]}</div>
-                                    <div>⏰ ${date.split(' ')[1]}</div>
+                                <button class="product-group-btn product-group-btn-reject" 
+                                        onclick="rejectProductGroup('${group.productId}', ${firstItemId})"
+                                        title="Отклонить все фотографии этого товара">
+                                    ❌ Отклонить все
+                                    <span class="product-group-count">${group.pendingCount}</span>
+                                </button>
+                        `;
+                    } else {
+                        // Все товары уже промодерированы
+                        const approvedCount = group.items.filter(item => item.status === 'approved').length;
+                        const rejectedCount = group.items.filter(item => item.status === 'rejected').length;
+                        
+                        html += `
+                                <div style="color: #6c757d; font-size: 0.9em;">
+                                    ✅ Одобрено: ${approvedCount} | ❌ Отклонено: ${rejectedCount}
                                 </div>
-                                
-                                <div class="queue-item-meta">
-                                    ${category ? `<span>📁 ${category}</span>` : ''}
-                                    <span>ID: ${item.id}</span>
-                                    <span>${item.status === 'pending' ? '⏳ Ожидает' : item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}</span>
-                                </div>
-                                
-                                <div class="queue-item-buttons">
-                                    ${item.status === 'pending' ? `
-                                        <button onclick="moderate(${item.id}, 'approved')" class="btn btn-success" title="Одобрить товар">✅ Одобрить</button>
-                                        <button onclick="moderate(${item.id}, 'rejected')" class="btn btn-danger" title="Отклонить товар">❌ Отклонить</button>
-                                        <button onclick="viewDetails(${item.id})" class="btn" title="Подробная информация">🔍</button>
-                                    ` : `
-                                        <span style="color: ${item.status === 'approved' ? '#28a745' : '#dc3545'}; font-weight: bold; padding: 8px 12px; text-align: center;">
-                                            ${item.status === 'approved' ? '✅ Одобрено' : '❌ Отклонено'}
-                                        </span>
-                                        <button onclick="viewDetails(${item.id})" class="btn" title="Подробная информация">🔍</button>
-                                    `}
-                                </div>
+                        `;
+                    }
+                    
+                    html += `
                             </div>
                         </div>
                     `;
-                    
-                    itemsInCurrentRow++;
-                    
-                    // Закрываем строку если достигли максимума или это последний товар
-                    if (itemsInCurrentRow === itemsPerRow || index === queue.data.length - 1) {
-                        html += `</div>`;
-                        itemsInCurrentRow = 0;
-                    }
                 });
                 
                 // Сохраняем информацию о пагинации
@@ -1047,6 +1286,20 @@
                 loadQueue(currentPage);
                 loadStats();
             }
+        }
+        
+        // Функция для одобрения всей группы товаров
+        async function approveProductGroup(productId, itemId) {
+            // Используем существующую функцию moderate для первого товара
+            // Backend сам одобрит все товары с таким же product_id
+            await moderate(itemId, 'approved');
+        }
+        
+        // Функция для отклонения всей группы товаров
+        async function rejectProductGroup(productId, itemId) {
+            // Используем существующую функцию moderate для первого товара
+            // Backend сам отклонит все товары с таким же product_id
+            await moderate(itemId, 'rejected');
         }
         
         async function submitModeration(event) {
