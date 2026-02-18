@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 Система модерации изображений</title>
+    <meta charset="utf-8">
+    <style>
+        /* Базовые стили */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #2c3e50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; background: #ddd; border: none; cursor: pointer; border-radius: 3px; }
+        .tab.active { background: #3498db; color: white; }
+        .queue-item { background: white; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; display: flex; gap: 15px; }
+        .item-image img { width: 200px; height: 150px; object-fit: cover; border-radius: 3px; }
+        .item-info { flex: 1; }
+        .item-actions { display: flex; gap: 10px; }
+        button { padding: 8px 16px; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .alert { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .pagination { display: flex; gap: 10px; margin: 20px 0; align-items: center; }
+        .stats { background: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Система модерации изображений</h1>
+            <p>Версия 1.0.0 | Все в одном файле</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('queue')">📋 Очередь модерации</button>
+            <button class="tab" onclick="showTab('stats')">📊 Статистика</button>
+            <button class="tab" onclick="showTab('submit')">➕ Новая модерация</button>
+        </div>
+        
+        <div id="queue-tab" class="tab-content">
+            <div class="stats">
+                <h3>📊 Статистика очереди</h3>
+                <div id="stats-content">Загрузка...</div>
+            </div>
+            
+            <div class="pagination">
+                <button onclick="changePage(-1)">◀ Назад</button>
+                <span id="page-info">Страница 1</span>
+                <button onclick="changePage(1)">Вперед ▶</button>
+                <select id="items-per-page" onchange="changeItemsPerPage()">
+                    <option value="5">5 на странице</option>
+                    <option value="10" selected>10 на странице</option>
+                    <option value="20">20 на странице</option>
+                    <option value="50">50 на странице</option>
+                </select>
+            </div>
+            
+            <div id="queue-content">
+                <p>Загрузка очереди...</p>
+            </div>
+            
+            <div id="alert-container"></div>
+        </div>
+        
+        <div id="stats-tab" class="tab-content" style="display: none;">
+            <div class="stats">
+                <h3>📊 Общая статистика</h3>
+                <div id="full-stats">Загрузка...</div>
+            </div>
+        </div>
+        
+        <div id="submit-tab" class="tab-content" style="display: none;">
+            <div class="stats">
+                <h3>➕ Отправить на модерацию</h3>
+                <form id="submit-form">
+                    <div style="margin: 10px 0;">
+                        <label>ID товара:</label>
+                        <input type="text" id="product_id" required style="width: 300px; padding: 8px;">
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <label>URL изображения:</label>
+                        <input type="text" id="image_url" required style="width: 500px; padding: 8px;">
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <label>URL для скачивания:</label>
+                        <input type="text" id="download_url" style="width: 500px; padding: 8px;">
+                    </div>
+                    <button type="submit" class="btn-success">Отправить на модерацию</button>
+                </form>
+                <div id="submit-result" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== КОНФИГУРАЦИЯ ==========
+        const CONFIG = {
+            API_URL: 'http://localhost:3000/api',
+            API_KEY: 'test_api_key_123456',
+            ITEMS_PER_PAGE: 10,
+            DEBUG: true
+        };
+        
+        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalItems = 0;
+        
+        // ========== УТИЛИТЫ ==========
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+        
+        function showTab(tabName) {
+            // Скрыть все вкладки
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            
+            // Показать выбранную вкладку
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            event.target.classList.add('active');
+            
+            // Загрузить данные если нужно
+            if (tabName === 'queue') {
+                loadQueue();
+                loadStats();
+            } else if (tabName === 'stats') {
+                loadFullStats();
+            }
+        }
+        
+        // ========== API ФУНКЦИИ ==========
+        async function makeRequest(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'X-API-Key': CONFIG.API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data) options.body = JSON.stringify(data);
+            
+            try {
+                const response = await fetch(CONFIG.API_URL + endpoint, options);
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Ошибка сервера');
+                }
+                return await response.json();
+            } catch (error) {
+                showAlert(`Ошибка: ${error.message}`, 'error');
+                console.error('API Error:', error);
+                return null;
+            }
+        }
+        
+        // ========== ОЧЕРЕДЬ ==========
+        async function loadQueue() {
+            const itemsPerPage = parseInt(document.getElementById('items-per-page').value);
+            const offset = (currentPage - 1) * itemsPerPage;
+            
+            const result = await makeRequest(`/moderation/queue?limit=${itemsPerPage}&offset=${offset}&page=${currentPage}`);
+            if (!result || !result.success) return;
+            
+            totalItems = result.pagination.total;
+            totalPages = result.pagination.total_pages;
+            
+            // Обновить информацию о странице
+            document.getElementById('page-info').textContent = 
+                `Страница ${currentPage} из ${totalPages} (всего: ${totalItems})`;
+            
+            // Отобразить очередь
+            const container = document.getElementById('queue-content');
+            if (!result.data || result.data.length === 0) {
+                container.innerHTML = '<p>Очередь пуста</p>';
+                return;
+            }
+            
+            let html = '';
+            result.data.forEach(item => {
+                const metadata = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+                html += `
+                <div class="queue-item">
+                    <div class="item-image">
+                        <img src="${item.image_url}" alt="${metadata?.title || 'Изображение'}" 
+                             onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"150\"><rect width=\"200\" height=\"150\" fill=\"%23f0f0f0\"/><text x=\"100\" y=\"75\" font-family=\"Arial\" font-size=\"14\" fill=\"%23999\" text-anchor=\"middle\">Нет изображения</text></svg>'">
+                    </div>
+                    <div class="item-info">
+                        <h3>${metadata?.title || 'Без названия'}</h3>
+                        <p><strong>ID товара:</strong> ${item.product_id}</p>
+                        <p><strong>Описание:</strong> ${metadata?.description || 'Без описания'}</p>
+                        <p><strong>Цена:</strong> ${metadata?.price || 'Не указана'}</p>
+                        <p><strong>Категория:</strong> ${metadata?.category || 'Без категории'}</p>
+                        <p><strong>Статус:</strong> ${item.status === 'pending' ? '⏳ Ожидает' : item.status}</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn-success" onclick="moderate('${item.moderation_uuid}', 'approved')">✅ Одобрить</button>
+                        <button class="btn-danger" onclick="moderate('${item.moderation_uuid}', 'rejected')">❌ Отклонить</button>
+                    </div>
+                </div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        async function loadStats() {
+            const result = await makeRequest('/moderation/stats');
+            if (!result || !result.success) return;
+            
+            const stats = result.data;
+            document.getElementById('stats-content').innerHTML = `
+                <p><strong>Ожидает модерации:</strong> ${stats.pending}</p>
+                <p><strong>Одобрено:</strong> ${stats.approved}</p>
+                <p><strong>Отклонено:</strong> ${stats.rejected}</p>
+                <p><strong>Всего:</strong> ${stats.total}</p>
+            `;
+        }
+        
+        async function loadFullStats() {
+            const result = await makeRequest('/moderation/stats');
+            if (!result || !result.success) return;
+            
+            const stats = result.data;
+            document.getElementById('full-stats').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                    <div style="background: #e8f4fd; padding: 15px; border-radius: 5px;">
+                        <h4>📊 Статистика модерации</h4>
+                        <p>Ожидает: <strong>${stats.pending}</strong></p>
+                        <p>Одобрено: <strong>${stats.approved}</strong></p>
+                        <p>Отклонено: <strong>${stats.rejected}</strong></p>
+                        <p>Всего: <strong>${stats.total}</strong></p>
+                    </div>
+                    <div style="background: #f0f8f0; padding: 15px; border-radius: 5px;">
+                        <h4>📈 Процентное соотношение</h4>
+                        <p>Одобрено: <strong>${stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}%</strong></p>
+                        <p>Отклонено: <strong>${stats.total > 0 ? Math.round((stats.rejected / stats.total) * 100) : 0}%</strong></p>
+                        <p>Ожидает: <strong>${stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}%</strong></p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                loadQueue();
+            }
+        }
+        
+        function changeItemsPerPage() {
+            currentPage = 1;
+            loadQueue();
+        }
+        
+        // ========== МОДЕРАЦИЯ ==========
+        async function moderate(id, status) {
+            if (status === 'approved') {
+                if (!confirm('Одобрить эту модерацию?\n\n1. Все товары с таким же ID будут удалены из очереди\n2. Изображение будет загружено на сервер img.instrumentstore.ru:7990')) {
+                    return;
+                }
+            }
+            
+            const result = await makeRequest(`/moderation/${id}/moderate`, 'PUT', { status });
+            if (result && result.success) {
+                let message = status === 'approved' ? 'Модерация одобрена' : 'Модерация отклонена';
+                if (result.data.upload && result.data.upload.success) {
+                    message += `\nИзображение загружено: ${result.data.upload.filename}`;
+                }
+                showAlert(message);
+                loadQueue();
+                loadStats();
+            }
+        }
+        
+        // ========== ОТПРАВКА НА МОДЕРАЦИЮ ==========
+        document.getElementById('submit-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const productId = document.getElementById('product_id').value;
+            const imageUrl = document.getElementById('image_url').value;
+            const downloadUrl = document.getElementById('download_url').value || imageUrl;
+            
+            const data = {
+                product_id: productId,
+                image_url: imageUrl,
+                download_url: downloadUrl,
+                metadata: {
+                    title: `Товар ${productId}`,
+                    description: 'Отправлено через веб-интерфейс',
+                    price: 'Не указана',
+                    category: 'Общее'
+                }
+            };
+            
+            const result = await makeRequest('/moderation/submit', 'POST', data);
+            if (result && result.success) {
+                document.getElementById('submit-result').innerHTML = 
+                    `<div class="alert alert-success">✅ Модерация создана! ID: ${result.data.moderation_id}</div>`;
+                document.getElementById('submit-form').reset();
+                
+                // Переключиться на вкладку очереди и обновить
+                showTab('queue');
+            }
+        });
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Система модерации загружена');
+            console.log('Конфигурация:', CONFIG);
+            
+            // Загрузить начальные данные
+            loadQueue();
+            loadStats();
+            
+            // Проверить подключение к API
+            fetch(CONFIG.API_URL + '/health')
+                .then(response => response.json())
+                .then(data => console.log('✅ API подключен:', data.service))
+                .catch(error => console.error('❌ API недоступен:', error));
+        });
+    </script>
+</body>
+</html>

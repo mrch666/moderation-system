@@ -19,7 +19,7 @@ try {
     console.log('⚠️  Не удалось прочитать .env файл, используем значения по умолчанию');
 }
 
-const PORT = envVars.FRONTEND_PORT || 8080;
+const PORT = 8080;
 const HOST = envVars.FRONTEND_HOST || '0.0.0.0';
 const API_URL = envVars.API_URL || 'http://localhost:3000/api';
 const API_KEY = envVars.API_KEY || 'test_api_key_123456';

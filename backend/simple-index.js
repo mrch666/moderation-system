@@ -741,10 +741,11 @@ app.use((err, req, res, next) => {
 });
 
 // Запуск сервера
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Simple Backend API running on port ${PORT}`);
     console.log(`📁 Environment: ${process.env.NODE_ENV}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔗 External access: http://192.168.1.189:${PORT}`);
     console.log(`🔑 API key: ${process.env.API_KEY ? 'Установлен' : 'Используется тестовый'}`);
 });
 

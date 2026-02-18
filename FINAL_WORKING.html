@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 СИСТЕМА МОДЕРАЦИИ - РАБОЧАЯ ВЕРСИЯ</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px; margin: 5px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .item { border: 1px solid #ddd; padding: 15px; margin: 10px 0; }
+        .error { color: red; }
+        .success { color: green; }
+        img { max-width: 150px; max-height: 100px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 СИСТЕМА МОДЕРАЦИИ ИЗОБРАЖЕНИЙ</h1>
+    <p><strong>РАБОЧАЯ ВЕРСИЯ</strong> | Backend: <span id="backend-status">Проверка...</span></p>
+    
+    <div>
+        <button onclick="checkBackend()">🔧 Проверить Backend</button>
+        <button onclick="loadQueue()">📋 Загрузить очередь</button>
+        <button onclick="createTest()">🧪 Создать тест</button>
+    </div>
+    
+    <div id="status"></div>
+    <div id="queue"></div>
+    
+    <div style="margin-top: 30px; padding: 15px; background: #f0f0f0; border-radius: 5px;">
+        <h3>📋 ИНФОРМАЦИЯ:</h3>
+        <p>Этот файл работает <strong>локально в браузере</strong>.</p>
+        <p>Backend API должен быть запущен на <code>http://localhost:3030</code></p>
+        <p>API ключ: <code>test_api_key_123456</code></p>
+        <p>Для запуска backend: <code>cd moderation-system/backend && node simple-index.js</code></p>
+    </div>
+
+    <script>
+        // КОНФИГУРАЦИЯ
+        const API_URL = 'http://localhost:3030/api';
+        const API_KEY = 'test_api_key_123456';
+        
+        // Функции
+        function showMessage(text, isError = false) {
+            document.getElementById('status').innerHTML = 
+                `<div style="padding: 10px; background: ${isError ? '#ffebee' : '#e8f5e8'}; 
+                           color: ${isError ? '#c62828' : '#2e7d32'}; margin: 10px 0;">
+                    ${isError ? '❌' : '✅'} ${text}
+                </div>`;
+        }
+        
+        async function checkBackend() {
+            try {
+                const response = await fetch(API_URL + '/health');
+                const data = await response.json();
+                document.getElementById('backend-status').innerHTML = 
+                    `<span style="color: green">✅ ${data.service} v${data.version}</span>`;
+                showMessage(`Backend работает: ${data.service}`);
+                return true;
+            } catch (error) {
+                document.getElementById('backend-status').innerHTML = 
+                    `<span style="color: red">❌ Недоступен: ${error.message}</span>`;
+                showMessage(`Backend недоступен: ${error.message}`, true);
+                return false;
+            }
+        }
+        
+        async function loadQueue() {
+            showMessage('Загружаю очередь...');
+            
+            try {
+                const response = await fetch(API_URL + '/moderation/queue?limit=5', {
+                    headers: { 'X-API-Key': API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `<h3>Очередь (${data.pagination?.total || 0} элементов):</h3>`;
+                    
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach(item => {
+                            const meta = typeof item.metadata === 'string' ? 
+                                JSON.parse(item.metadata) : (item.metadata || {});
+                            
+                            html += `
+                            <div class="item">
+                                <img src="${item.image_url}" onerror="this.style.display='none'">
+                                <div>
+                                    <strong>${meta.title || 'Без названия'}</strong><br>
+                                    ID: ${item.product_id}<br>
+                                    <button onclick="approve('${item.moderation_uuid}')" style="background: #2ecc71">✅ Одобрить</button>
+                                    <button onclick="reject('${item.moderation_uuid}')" style="background: #e74c3c">❌ Отклонить</button>
+                                </div>
+                            </div>`;
+                        });
+                    } else {
+                        html += '<p>Очередь пуста</p>';
+                    }
+                    
+                    document.getElementById('queue').innerHTML = html;
+                    showMessage(`Загружено ${data.data?.length || 0} элементов`);
+                } else {
+                    showMessage(`Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showMessage(`Ошибка загрузки: ${error.message}`, true);
+            }
+        }
+        
+        async function approve(id) {
+            if (!confirm('Одобрить эту модерацию?')) return;
+            
+            try {
+                const response = await fetch(API_URL + '/moderation/' + id + '/moderate', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ status: 'approved' })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`✅ Одобрено! ${data.data?.message || ''}`);
+                    setTimeout(loadQueue, 1000);
+                } else {
+                    showMessage(`❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showMessage(`❌ Ошибка: ${error.message}`, true);
+            }
+        }
+        
+        async function reject(id) {
+            try {
+                const response = await fetch(API_URL + '/moderation/' + id + '/moderate', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ status: 'rejected' })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`✅ Отклонено!`);
+                    setTimeout(loadQueue, 1000);
+                } else {
+                    showMessage(`❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showMessage(`❌ Ошибка: ${error.message}`, true);
+            }
+        }
+        
+        async function createTest() {
+            const testData = {
+                product_id: 'TEST_' + Date.now(),
+                image_url: 'https://example.com/test.jpg',
+                download_url: 'https://example.com/test.jpg',
+                metadata: {
+                    title: 'Тестовый товар',
+                    description: 'Создан через веб-интерфейс',
+                    price: '1000 руб',
+                    category: 'Тест'
+                }
+            };
+            
+            try {
+                const response = await fetch(API_URL + '/moderation/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify(testData)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`✅ Тест создан! ID: ${data.data.moderation_id}`);
+                    setTimeout(loadQueue, 1000);
+                } else {
+                    showMessage(`❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showMessage(`❌ Ошибка: ${error.message}`, true);
+            }
+        }
+        
+        // Автозагрузка при старте
+        window.onload = function() {
+            console.log('🚀 Система модерации загружена');
+            checkBackend();
+        };
+    </script>
+</body>
+</html>

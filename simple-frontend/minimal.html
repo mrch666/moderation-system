@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Система модерации - Минимальная версия</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        .item { border: 1px solid #ddd; padding: 15px; margin: 10px 0; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Система модерации изображений</h1>
+    <p>Минимальная рабочая версия</p>
+    
+    <div>
+        <h3>Проверка системы:</h3>
+        <button onclick="checkBackend()">Проверить Backend</button>
+        <button onclick="loadQueue()">Загрузить очередь</button>
+        <div id="status"></div>
+    </div>
+    
+    <div id="queue"></div>
+    
+    <div>
+        <h3>Создать тест:</h3>
+        <button onclick="createTest()">Создать тестовую модерацию</button>
+        <div id="create-result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        const API_KEY = 'test_api_key_123456';
+        
+        function showStatus(message, isError = false) {
+            const div = document.getElementById('status');
+            div.innerHTML = `<div class="${isError ? 'error' : 'success'}">${message}</div>`;
+        }
+        
+        async function checkBackend() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                showStatus(`✅ Backend работает: ${data.service} v${data.version}`);
+                return true;
+            } catch (error) {
+                showStatus(`❌ Backend ошибка: ${error.message}`, true);
+                return false;
+            }
+        }
+        
+        async function loadQueue() {
+            try {
+                const response = await fetch(`${API_URL}/moderation/queue?limit=5`, {
+                    headers: { 'X-API-Key': API_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `<h3>Очередь (${data.pagination.total} элементов):</h3>`;
+                    
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach(item => {
+                            html += `
+                            <div class="item">
+                                <strong>${item.product_id}</strong><br>
+                                ${item.metadata?.title || 'Без названия'}<br>
+                                <button onclick="approve('${item.moderation_uuid}')">✅ Одобрить</button>
+                                <button onclick="reject('${item.moderation_uuid}')">❌ Отклонить</button>
+                            </div>`;
+                        });
+                    } else {
+                        html += '<p>Очередь пуста</p>';
+                    }
+                    
+                    document.getElementById('queue').innerHTML = html;
+                    showStatus(`✅ Загружено ${data.data.length} элементов`);
+                } else {
+                    showStatus(`❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showStatus(`❌ Ошибка загрузки: ${error.message}`, true);
+            }
+        }
+        
+        async function approve(id) {
+            if (!confirm('Одобрить эту модерацию?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/moderation/${id}/moderate`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ status: 'approved' })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus(`✅ Одобрено: ${data.data.message}`);
+                    loadQueue(); // Обновляем очередь
+                } else {
+                    showStatus(`❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showStatus(`❌ Ошибка: ${error.message}`, true);
+            }
+        }
+        
+        async function reject(id) {
+            try {
+                const response = await fetch(`${API_URL}/moderation/${id}/moderate`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ status: 'rejected' })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus(`✅ Отклонено`);
+                    loadQueue(); // Обновляем очередь
+                } else {
+                    showStatus(`❌ Ошибка: ${data.error}`, true);
+                }
+            } catch (error) {
+                showStatus(`❌ Ошибка: ${error.message}`, true);
+            }
+        }
+        
+        async function createTest() {
+            const testData = {
+                product_id: `TEST_${Date.now()}`,
+                image_url: 'https://example.com/test.jpg',
+                download_url: 'https://example.com/test.jpg',
+                metadata: {
+                    title: 'Тестовый товар',
+                    description: 'Создан для тестирования',
+                    price: '1000 руб',
+                    category: 'Тест'
+                }
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/moderation/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('create-result').innerHTML = 
+                        `<div class="success">✅ Модерация создана: ${data.data.moderation_id}</div>`;
+                    loadQueue(); // Обновляем очередь
+                } else {
+                    document.getElementById('create-result').innerHTML = 
+                        `<div class="error">❌ Ошибка: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('create-result').innerHTML = 
+                    `<div class="error">❌ Ошибка: ${error.message}</div>`;
+            }
+        }
+        
+        // Автоматически проверяем backend при загрузке
+        window.onload = function() {
+            checkBackend();
+            loadQueue();
+        };
+    </script>
+</body>
+</html>

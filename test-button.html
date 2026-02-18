@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест кнопки модерации</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тест кнопки модерации</h1>
+    
+    <div>
+        <h3>1. Проверка функции moderate:</h3>
+        <button onclick="testModerateFunction()">Проверить функцию moderate()</button>
+        <div id="test1"></div>
+    </div>
+    
+    <div>
+        <h3>2. Тестовая кнопка модерации:</h3>
+        <button onclick="moderate('test-uuid-123', 'approved')">✅ Тест Approve</button>
+        <button onclick="moderate('test-uuid-456', 'rejected')">❌ Тест Reject</button>
+        <div id="test2"></div>
+    </div>
+    
+    <div>
+        <h3>3. Проверка API_URL и API_KEY:</h3>
+        <button onclick="testConfig()">Проверить конфигурацию</button>
+        <div id="test3"></div>
+    </div>
+    
+    <div>
+        <h3>4. Проверка fetch:</h3>
+        <button onclick="testFetch()">Проверить fetch запрос</button>
+        <div id="test4"></div>
+    </div>
+    
+    <div>
+        <h3>5. Ссылки:</h3>
+        <p><a href="http://localhost:8080" target="_blank">Основной веб-интерфейс</a></p>
+        <p><a href="http://localhost:8080/config.js" target="_blank">config.js</a></p>
+    </div>
+
+    <script>
+        // Загружаем config.js
+        const script = document.createElement('script');
+        script.src = '/config.js';
+        script.onload = function() {
+            console.log('✅ config.js загружен:', window.MODERATION_CONFIG);
+            // Копируем функции из simple-index.html
+            copyFunctionsFromMainPage();
+        };
+        document.head.appendChild(script);
+        
+        function copyFunctionsFromMainPage() {
+            // Попробуем получить функции из основного интерфейса
+            fetch('/')
+                .then(response => response.text())
+                .then(html => {
+                    // Ищем JavaScript код
+                    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+                    if (scriptMatch) {
+                        console.log('Найден JavaScript код в основном интерфейсе');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки основного интерфейса:', error);
+                });
+        }
+        
+        function testModerateFunction() {
+            if (typeof moderate === 'function') {
+                document.getElementById('test1').innerHTML = 
+                    '<span class="success">✅ Функция moderate() существует</span>';
+            } else {
+                document.getElementById('test1').innerHTML = 
+                    '<span class="error">❌ Функция moderate() не найдена</span>';
+            }
+        }
+        
+        function testConfig() {
+            const config = window.MODERATION_CONFIG || {};
+            const html = `
+                <div>
+                    <p>API_URL: <code>${config.API_URL || 'не найден'}</code></p>
+                    <p>API_KEY: <code>${config.API_KEY ? '***' + config.API_KEY.slice(-6) : 'не найден'}</code></p>
+                    <p>DEBUG: ${config.DEBUG || 'не найден'}</p>
+                </div>
+            `;
+            document.getElementById('test3').innerHTML = html;
+        }
+        
+        function testFetch() {
+            const url = (window.MODERATION_CONFIG?.API_URL || '/api') + '/health';
+            fetch(url)
+                .then(response => {
+                    document.getElementById('test4').innerHTML = 
+                        `<span class="success">✅ Fetch работает: ${response.status}</span>`;
+                })
+                .catch(error => {
+                    document.getElementById('test4').innerHTML = 
+                        `<span class="error">❌ Fetch ошибка: ${error.message}</span>`;
+                });
+        }
+        
+        // Определяем функцию moderate если её нет
+        if (typeof moderate === 'undefined') {
+            window.moderate = function(id, status) {
+                alert(`Функция moderate вызвана: id=${id}, status=${status}`);
+                console.log('moderate called:', id, status);
+                
+                // Простая реализация для теста
+                const config = window.MODERATION_CONFIG || {};
+                const apiUrl = config.API_URL || '/api';
+                const apiKey = config.API_KEY || 'test_api_key_123456';
+                
+                fetch(`${apiUrl}/moderation/${id}/moderate`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey
+                    },
+                    body: JSON.stringify({ status })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(`Результат: ${data.success ? 'Успех' : 'Ошибка'}`);
+                })
+                .catch(error => {
+                    alert(`Ошибка: ${error.message}`);
+                });
+            };
+            
+            console.log('⚠️ Функция moderate определена локально для теста');
+        }
+    </script>
+</body>
+</html>
