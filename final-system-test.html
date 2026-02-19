@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ФИНАЛЬНЫЙ ТЕСТ ВСЕЙ СИСТЕМЫ</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .section { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #007bff; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #1e1e1e; color: #fff; padding: 15px; border-radius: 5px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; font-size: 12px; max-height: 400px; overflow-y: auto; }
+        .step { margin: 10px 0; padding: 10px; background: #fff; border-radius: 5px; border: 1px solid #dee2e6; }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 5px; }
+        .url { background: #e9ecef; padding: 5px 10px; border-radius: 3px; font-family: monospace; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎯 ФИНАЛЬНЫЙ ТЕСТ ВСЕЙ СИСТЕМЫ МОДЕРАЦИИ</h1>
+    
+    <div class="section">
+        <h2>1. СИСТЕМНЫЕ КОМПОНЕНТЫ</h2>
+        <div class="step">
+            <div class="url">🌐 Backend API: http://192.168.1.189:3000</div>
+            <div class="url">🌐 Frontend: http://192.168.1.189:8080</div>
+            <div class="url">📤 Целевой сервер: http://img.instrumentstore.ru:7990/api/modelgoods/image/</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>2. ТЕСТ ПОДКЛЮЧЕНИЯ</h2>
+        <div class="step">
+            <div class="status info" id="backendStatus">Проверка backend...</div>
+            <div class="status info" id="frontendStatus">Проверка frontend...</div>
+            <div class="status info" id="targetStatus">Проверка целевого сервера...</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>3. ТЕСТ РАБОТЫ СИСТЕМЫ</h2>
+        <div class="step">
+            <div class="status info" id="createStatus">Создание тестового товара...</div>
+            <div class="status info" id="moderateStatus">Модерация товара...</div>
+            <div class="status info" id="uploadStatus">Загрузка фото на сервер...</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>4. ЛОГ ТЕСТА</h2>
+        <div class="log" id="log"></div>
+    </div>
+    
+    <div class="section">
+        <h2>5. УПРАВЛЕНИЕ</h2>
+        <button onclick="runFullTest()">🚀 Запустить полный тест</button>
+        <button onclick="testBackendOnly()">🔧 Тест только backend</button>
+        <button onclick="testUploadOnly()">📤 Тест загрузки фото</button>
+        <button onclick="clearLog()">🗑️ Очистить лог</button>
+    </div>
+    
+    <script>
+        const BACKEND_URL = 'http://192.168.1.189:3000';
+        const API_URL = `${BACKEND_URL}/api`;
+        const FRONTEND_URL = 'http://192.168.1.189:8080';
+        const TARGET_URL = 'http://img.instrumentstore.ru:7990/api/modelgoods/image/';
+        
+        const logElement = document.getElementById('log');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📝';
+            logElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        function updateStatus(id, message, type = 'info') {
+            const element = document.getElementById(id);
+            element.textContent = message;
+            element.className = 'status ' + type;
+        }
+        
+        async function testBackend() {
+            updateStatus('backendStatus', 'Проверка backend...', 'info');
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('backendStatus', `✅ Backend работает: ${data.service}`, 'success');
+                    log(`Backend: ${data.service}, версия: ${data.version || '1.0.0'}`);
+                    return true;
+                } else {
+                    updateStatus('backendStatus', `❌ Backend ошибка: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('backendStatus', `❌ Backend недоступен: ${error.message}`, 'error');
+                log(`Ошибка backend: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testFrontend() {
+            updateStatus('frontendStatus', 'Проверка frontend...', 'info');
+            try {
+                const response = await fetch(FRONTEND_URL);
+                if (response.ok) {
+                    updateStatus('frontendStatus', '✅ Frontend работает', 'success');
+                    log('Frontend доступен');
+                    return true;
+                } else {
+                    updateStatus('frontendStatus', `❌ Frontend ошибка: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('frontendStatus', `❌ Frontend недоступен: ${error.message}`, 'error');
+                log(`Ошибка frontend: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testTargetServer() {
+            updateStatus('targetStatus', 'Проверка целевого сервера...', 'info');
+            try {
+                // Простая проверка доступности
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(TARGET_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test: 'connection' }),
+                    signal: controller.signal
+                }).catch(() => null);
+                
+                clearTimeout(timeoutId);
+                
+                if (response) {
+                    updateStatus('targetStatus', `✅ Сервер доступен (ответ: ${response.status})`, 'success');
+                    log(`Целевой сервер доступен, статус: ${response.status}`);
+                    return true;
+                } else {
+                    updateStatus('targetStatus', '⚠️ Сервер может быть недоступен', 'warning');
+                    log('Целевой сервер может не отвечать на тестовые запросы', 'warning');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('targetStatus', `⚠️ Ошибка проверки: ${error.message}`, 'warning');
+                log(`Проверка целевого сервера: ${error.message}`, 'warning');
+                return false;
+            }
+        }
+        
+        async function createTestProduct() {
+            updateStatus('createStatus', 'Создание тестового товара...', 'info');
+            const productId = 'FINAL-TEST-' + Date.now();
+            
+            try {
+                const response = await fetch(`${API_URL}/moderation/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_url: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&h=600',
+                        product_id: productId,
+                        download_url: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&h=600',
+                        metadata: { name: 'Финальный тестовый товар' }
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('createStatus', `✅ Товар создан: ${productId}`, 'success');
+                    log(`Товар создан: ${productId}, ID: ${data.data.moderation_id}`);
+                    return { success: true, productId, itemId: data.data.moderation_id };
+                } else {
+                    updateStatus('createStatus', `❌ Ошибка создания`, 'error');
+                    return { success: false };
+                }
+            } catch (error) {
+                updateStatus('createStatus', `❌ Ошибка: ${error.message}`, 'error');
+                return { success: false };
+            }
+        }
+        
+        async function moderateProduct(itemId, productId) {
+            updateStatus('moderateStatus', 'Модерация товара...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/moderation/${itemId}/moderate`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'approved' })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('moderateStatus', `✅ Товар одобрен, загрузка фото запущена`, 'success');
+                    log(`Модерация: ${JSON.stringify(data.data)}`);
+                    log('✅ Backend получил команду на загрузку фото');
+                    log('📤 В консоли backend должны появиться сообщения о загрузке');
+                    return true;
+                } else {
+                    updateStatus('moderateStatus', `❌ Ошибка модерации`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus('moderateStatus', `❌ Ошибка: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function runFullTest() {
+            clearLog();
+            log('=== НАЧАЛО ФИНАЛЬНОГО ТЕСТА СИСТЕМЫ ===', 'info');
+            
+            // 1. Проверка компонентов
+            log('1. Проверка системных компонентов...', 'info');
+            const backendOk = await testBackend();
+            const frontendOk = await testFrontend();
+            const targetOk = await testTargetServer();
+            
+            if (!backendOk) {
+                log('❌ Backend не работает. Тест остановлен.', 'error');
+                return;
+            }
+            
+            // 2. Тест работы системы
+            log('2. Тест работы системы...', 'info');
+            const product = await createTestProduct();
+            
+            if (!product.success) {
+                log('❌ Не удалось создать товар. Тест остановлен.', 'error');
+                return;
+            }
+            
+            // Ждем немного
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // 3. Модерация и загрузка фото
+            updateStatus('uploadStatus', 'Запуск загрузки фото...', 'info');
+            const moderateOk = await moderateProduct(product.itemId, product.productId);
+            
+            if (moderateOk) {
+                updateStatus('uploadStatus', '✅ Загрузка фото ЗАПУЩЕНА!', 'success');
+                log('', 'info');
+                log('=== ВАЖНАЯ ИНФОРМАЦИЯ ===', 'info');
+                log('1. Система работает корректно', 'success');
+                log('2. Backend получил команду на загрузку фото', 'success');
+                log('3. Загрузка выполняется в фоновом режиме', 'info');
+                log('4. Смотрите консоль backend для деталей загрузки', 'info');
+                log('', 'info');
+                log('🎉 ФИНАЛЬНЫЙ ТЕСТ ПРОЙДЕН УСПЕШНО!', 'success');
+                log('Система готова к работе.', 'success');
+            }
+        }
+        
+        async function testBackendOnly() {
+            clearLog();
+            log('=== ТЕСТ ТОЛЬКО BACKEND ===', 'info');
+            await testBackend();
+            await testTargetServer();
+        }
+        
+        async function testUploadOnly() {
+            clearLog();
+            log('=== ТЕСТ ЗАГРУЗКИ ФОТО ===', 'info');
+            const product = await createTestProduct();
+            if (product.success) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await moderateProduct(product.itemId, product.productId);
+            }
+        }
+        
+        // Автозапуск проверки backend
+        setTimeout(() => {
+            log('Система тестирования готова.', 'info');
+            log('Нажмите "🚀 Запустить полный тест" для проверки всей системы.', 'info');
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест подключения к Backend</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .loading { background: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Тест подключения к Backend системы модерации</h1>
+    
+    <div class="test" id="test1">
+        <h3>1. Проверка доступности Backend</h3>
+        <p>URL: <code id="url1">http://192.168.1.189:3000/health</code></p>
+        <button onclick="testHealth()">Запустить тест</button>
+        <div id="result1"></div>
+    </div>
+    
+    <div class="test" id="test2">
+        <h3>2. Проверка API статистики (с API ключом)</h3>
+        <p>URL: <code id="url2">http://192.168.1.189:3000/api/moderation/stats</code></p>
+        <p>API ключ: <code>test_api_key_123456</code></p>
+        <button onclick="testStats()">Запустить тест</button>
+        <div id="result2"></div>
+    </div>
+    
+    <div class="test" id="test3">
+        <h3>3. Проверка очереди модерации</h3>
+        <p>URL: <code id="url3">http://192.168.1.189:3000/api/moderation/queue?limit=3</code></p>
+        <button onclick="testQueue()">Запустить тест</button>
+        <div id="result3"></div>
+    </div>
+    
+    <div class="test" id="test4">
+        <h3>4. Проверка CORS (кросс-доменные запросы)</h3>
+        <p>Проверяем можно ли делать запросы с этого домена</p>
+        <button onclick="testCors()">Запустить тест</button>
+        <div id="result4"></div>
+    </div>
+    
+    <div id="summary" style="margin-top: 20px; padding: 15px; border: 2px solid #333;">
+        <h2>📊 Итоговый результат:</h2>
+        <p id="summaryText">Тесты не запущены</p>
+    </div>
+    
+    <script>
+        const API_URL = 'http://192.168.1.189:3000';
+        const API_KEY = 'test_api_key_123456';
+        
+        function setResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId);
+            const resultDiv = element.querySelector('#result' + elementId.slice(-1)) || element;
+            
+            resultDiv.innerHTML = `
+                <p><strong>${success ? '✅ УСПЕХ' : '❌ ОШИБКА'}:</strong> ${message}</p>
+                ${data ? `<pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+            
+            element.className = 'test ' + (success ? 'success' : 'error');
+            updateSummary();
+        }
+        
+        function setLoading(elementId, message) {
+            const element = document.getElementById(elementId);
+            const resultDiv = element.querySelector('#result' + elementId.slice(-1)) || element;
+            resultDiv.innerHTML = `<p>⏳ ${message}...</p>`;
+            element.className = 'test loading';
+        }
+        
+        async function testHealth() {
+            setLoading('test1', 'Проверяем health endpoint');
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setResult('test1', true, `Backend работает! Статус: ${data.status}`, data);
+                } else {
+                    setResult('test1', false, `Ошибка HTTP: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                setResult('test1', false, `Ошибка сети: ${error.message}`);
+            }
+        }
+        
+        async function testStats() {
+            setLoading('test2', 'Проверяем статистику');
+            try {
+                const response = await fetch(`${API_URL}/api/moderation/stats`, {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setResult('test2', true, `Статистика получена! Успех: ${data.success}`, data);
+                } else {
+                    setResult('test2', false, `Ошибка HTTP: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                setResult('test2', false, `Ошибка сети: ${error.message}`);
+            }
+        }
+        
+        async function testQueue() {
+            setLoading('test3', 'Проверяем очередь');
+            try {
+                const response = await fetch(`${API_URL}/api/moderation/queue?limit=3`, {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const count = data.data ? data.data.length : 0;
+                    setResult('test3', true, `Очередь получена! Товаров: ${count}`, data);
+                } else {
+                    setResult('test3', false, `Ошибка HTTP: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                setResult('test3', false, `Ошибка сети: ${error.message}`);
+            }
+        }
+        
+        async function testCors() {
+            setLoading('test4', 'Проверяем CORS');
+            try {
+                // Пробуем OPTIONS запрос (preflight)
+                const response = await fetch(`${API_URL}/api/moderation/stats`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'X-API-Key'
+                    }
+                });
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                setResult('test4', true, `CORS заголовки получены`, corsHeaders);
+            } catch (error) {
+                setResult('test4', false, `Ошибка CORS: ${error.message}`);
+            }
+        }
+        
+        function updateSummary() {
+            const tests = ['test1', 'test2', 'test3', 'test4'];
+            let passed = 0;
+            let failed = 0;
+            
+            tests.forEach(testId => {
+                const element = document.getElementById(testId);
+                if (element.className.includes('success')) passed++;
+                if (element.className.includes('error')) failed++;
+            });
+            
+            const total = tests.length;
+            const summary = document.getElementById('summaryText');
+            
+            if (passed + failed === 0) {
+                summary.innerHTML = 'Тесты не запущены';
+            } else {
+                summary.innerHTML = `
+                    <strong>Пройдено: ${passed} из ${total}</strong><br>
+                    ✅ Успешных: ${passed}<br>
+                    ❌ Ошибок: ${failed}<br>
+                    ⏳ Ожидание: ${total - passed - failed}
+                `;
+                
+                // Обновляем стиль summary
+                const summaryDiv = document.getElementById('summary');
+                if (failed > 0) {
+                    summaryDiv.style.borderColor = '#dc3545';
+                    summaryDiv.style.background = '#f8d7da';
+                } else if (passed === total) {
+                    summaryDiv.style.borderColor = '#28a745';
+                    summaryDiv.style.background = '#d4edda';
+                }
+            }
+        }
+        
+        // Автозапуск первого теста
+        setTimeout(testHealth, 500);
+    </script>
+</body>
+</html>

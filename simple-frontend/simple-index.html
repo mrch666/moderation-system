@@ -1016,7 +1016,7 @@
                     
                     // Добавляем все фотографии товара
                     group.items.forEach(item => {
-                        const imageUrl = item.image_url || 'https://via.placeholder.com/120x120?text=No+Image';
+                        const imageUrl = item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&h=120&fit=crop';
                         const isPending = item.status === 'pending';
                         
                         html += `
@@ -1026,7 +1026,7 @@
                                  title="${isPending ? 'ЛКМ - одобрить, ПКМ - подробнее' : 'Просмотр деталей'}">
                                 <img src="${imageUrl}" 
                                      alt="Фото товара"
-                                     onerror="this.src='https://via.placeholder.com/120x120?text=Image+Error'"
+                                     onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&h=120&fit=crop'"
                                      oncontextmenu="event.preventDefault(); viewDetails(${item.id}); return false;">
                                 ${isPending ? `
                                 <div class="product-image-overlay" style="display: flex; flex-direction: column; gap: 5px;">
@@ -1182,9 +1182,9 @@
             
             const modalBody = `
                 <div class="modal-image" id="modalImageContainer" onclick="toggleZoom()">
-                    <img src="${item.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" 
+                    <img src="${item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}" 
                          alt="${metadata.name || item.product_id}"
-                         onerror="this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'"
                          id="modalImage">
                     <div class="zoom-indicator" id="zoomIndicator">×1.8</div>
                     <div class="zoom-controls">

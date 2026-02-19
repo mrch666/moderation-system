@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест подключения к Backend</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Тест подключения к Backend</h1>
+    
+    <div class="status info" id="status1">
+        Проверка backend...
+    </div>
+    
+    <div class="status info" id="status2">
+        Проверка API endpoints...
+    </div>
+    
+    <div class="status info" id="status3">
+        Тест загрузки фото...
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <button onclick="runTest()">Запустить тест</button>
+    <button onclick="clearLog()">Очистить лог</button>
+    
+    <script>
+        const API_URL = 'http://192.168.1.189:3000/api';
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        function updateStatus(id, message, type) {
+            const element = document.getElementById(id);
+            element.textContent = message;
+            element.className = 'status ' + type;
+        }
+        
+        async function runTest() {
+            clearLog();
+            log('=== ТЕСТ ПОДКЛЮЧЕНИЯ К BACKEND ===');
+            
+            // 1. Проверка health endpoint
+            updateStatus('status1', 'Проверка backend...', 'info');
+            try {
+                const healthResponse = await fetch('http://192.168.1.189:3000/health');
+                if (healthResponse.ok) {
+                    const data = await healthResponse.json();
+                    updateStatus('status1', `✅ Backend работает: ${data.service}`, 'success');
+                    log(`Backend: ${JSON.stringify(data)}`);
+                } else {
+                    updateStatus('status1', `❌ Backend не отвечает: ${healthResponse.status}`, 'error');
+                    return;
+                }
+            } catch (error) {
+                updateStatus('status1', `❌ Ошибка подключения: ${error.message}`, 'error');
+                log(`Ошибка: ${error.message}`);
+                log('Проверьте:');
+                log('1. Backend запущен? (node stable-final-backend.js)');
+                log('2. Порт 3000 открыт?');
+                log('3. Файрвол не блокирует?');
+                return;
+            }
+            
+            // 2. Проверка API endpoints
+            updateStatus('status2', 'Проверка API endpoints...', 'info');
+            try {
+                // Stats
+                const statsResponse = await fetch(`${API_URL}/moderation/stats`);
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    updateStatus('status2', `✅ API работает: ${statsData.success ? 'Успех' : 'Ошибка'}`, 'success');
+                    log(`Статистика: ${JSON.stringify(statsData.data)}`);
+                } else {
+                    updateStatus('status2', `❌ API ошибка: ${statsResponse.status}`, 'error');
+                }
+                
+                // Queue
+                const queueResponse = await fetch(`${API_URL}/queue?limit=1`);
+                if (queueResponse.ok) {
+                    const queueData = await queueResponse.json();
+                    log(`Очередь: ${queueData.data ? queueData.data.length + ' товаров' : 'нет данных'}`);
+                }
+            } catch (error) {
+                updateStatus('status2', `❌ Ошибка API: ${error.message}`, 'error');
+            }
+            
+            // 3. Тест загрузки фото
+            updateStatus('status3', 'Тест загрузки фото...', 'info');
+            try {
+                // Создаем тестовый товар
+                const productId = 'CONNECTION-TEST-' + Date.now();
+                const submitResponse = await fetch(`${API_URL}/moderation/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_url: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&h=600',
+                        product_id: productId
+                    })
+                });
+                
+                if (submitResponse.ok) {
+                    const submitData = await submitResponse.json();
+                    const itemId = submitData.data.moderation_id;
+                    log(`✅ Товар создан: ${productId} (ID: ${itemId})`);
+                    
+                    // Одобряем товар
+                    setTimeout(async () => {
+                        const moderateResponse = await fetch(`${API_URL}/moderation/${itemId}/moderate`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'approved' })
+                        });
+                        
+                        if (moderateResponse.ok) {
+                            const moderateData = await moderateResponse.json();
+                            updateStatus('status3', `✅ Загрузка фото запущена!`, 'success');
+                            log(`Модерация: ${JSON.stringify(moderateData.data)}`);
+                            log('');
+                            log('=== ВАЖНО ===');
+                            log('1. Backend получил команду на загрузку фото');
+                            log('2. Смотрите консоль backend для сообщений о загрузке');
+                            log('3. Фото отправляется на: http://img.instrumentstore.ru:7990/api/modelgoods/image/');
+                            log('4. Формат: multipart/form-data с modelid и file');
+                        } else {
+                            updateStatus('status3', `❌ Ошибка модерации`, 'error');
+                        }
+                    }, 1000);
+                } else {
+                    updateStatus('status3', `❌ Ошибка создания товара`, 'error');
+                }
+            } catch (error) {
+                updateStatus('status3', `❌ Ошибка: ${error.message}`, 'error');
+            }
+        }
+        
+        // Автозапуск теста
+        setTimeout(() => {
+            log('Готов к тесту. Нажмите "Запустить тест"');
+        }, 1000);
+    </script>
+</body>
+</html>
